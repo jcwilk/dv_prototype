@@ -42,6 +42,7 @@ end
 
 function _update60()
  if(btnp(4)) then
+  mobs.move()
   choose_move()
  end
  if(btnp(0)) then
@@ -81,6 +82,8 @@ function _draw()
   pal(12,player.col)
  end
  spr(2, player.x*8, player.y*8)
+
+ mobs.draw()
  pal()
 end
 -->8
@@ -115,27 +118,35 @@ function highlight_moves()
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = false
  end)
- highlighted_moves=get_moves()
+  
+ highlighted_moves=get_path_moves(player,mobs.get_all_coords())
  foreach(highlighted_moves,function(move)  
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = true  
  end)
 end
 
-function is_valid_move(x,y)
+function is_valid_move(x,y,entity)
  if x >= 1 and x <= 10 then
   if y >= 1 and y <= 10 then
-   return true
+   if is_color_compat(x,y,entity) then
+ 	  return true
+	  end
   end
  end
  return false
+end
+
+function is_color_compat(x,y,entity)
+ local tile = tiles.by_coord[x][y]
+ return(tile.col == 0 or entity.col == 0 or tile.col == entity.col)
 end
 
 function get_moves()
  local moves = {}
  for y=player.y-3,player.y+3 do
   for x=player.x-3,player.x+3 do
-   if is_valid_move(x,y) then
+   if is_valid_move(x,y,player) then
     add(moves,{x,y})
    end
   end
@@ -209,23 +220,184 @@ function exchange_color()
  if player.col == 0 then
   player.col = tile.col
   tile.col = 0
+  local spawn_col=11
+  if player.col == 11 then
+   spawn_col=8
+  end
+  spawn_around(player.x,player.y,spawn_col)
   return
  end
  
  if tile.col == 0 then
   tile.col = player.col
   player.col = 0
+  spawn_around(player.x,player.y,tile.col)
   return
+ end 
+end
+
+function spawn_around(x,y,col)
+ spawn_mob(x-1,y,col)
+ spawn_mob(x+1,y,col)
+ spawn_mob(x,y-1,col)
+ spawn_mob(x,y+1,col)
+end
+-->8
+max_path=4
+function get_path_moves(entity,obstacles)
+ if not obstacles then
+  obstacles={}
+ end
+ local seen={}
+ for x=entity.x-max_path,entity.x+max_path do
+  seen[x]={}
+  for y=entity.y-max_path,entity.y+max_path do
+   seen[x][y]=false
+  end
  end
  
+ local moves={}
+ 
+ local function expand(x,y,step)
+  if step > max_path or (seen[x][y] and seen[x][y] <= step) then
+   return
+  end
+  
+  local add_it=true
+  if seen[x][y] then
+   add_it=false
+  end
+  seen[x][y] = step
+  
+  if is_valid_move(x,y,entity) then
+   for i=1,#obstacles do
+    if x==obstacles[i][1] and y==obstacles[i][2] then
+     return
+    end
+   end
+   
+   if add_it then
+    add(moves, {x,y})
+   end
+   
+   expand(x-1,y,step+1)
+   expand(x+1,y,step+1)
+   expand(x,y-1,step+1)
+   expand(x,y+1,step+1)
+   //for ix=x-1,x+1 do
+   // for iy=y-1,y+1 do
+   //  expand(ix,iy,step+1)
+   // end
+   //end
+  end
+ end
+ 
+ expand(entity.x,entity.y,0)
+ 
+ sort(moves,function(a,b)
+  return a[2]>b[2] or (a[2]==b[2] and a[1]>b[1])
+ end)
+ 
+ return moves
 end
+-->8
+//thanks! https://www.lexaloffle.com/bbs/?tid=2477
+function sort(a,cmp)
+  for i=1,#a do
+    local j = i
+    while j > 1 and cmp(a[j-1],a[j]) do
+        a[j],a[j-1] = a[j-1],a[j]
+    j = j - 1
+    end
+  end
+end
+-->8
+mobs = {
+ all={},
+ by_coord={},
+ get_all_coords=function()
+  local coords={}
+  foreach(mobs.all,function(mob)
+   add(coords,{mob.x,mob.y})
+  end)
+  return coords
+ end,
+ move=function()
+  //local mobsall=mobs.all
+  //local mobsby_coord=mobs.by_coord
+  //mobs.all={}
+  //mobs.by_coord={}
+  foreach(mobs.all,function(mob)
+   if player.col == 0 or player.col == mob.col then
+    return
+   end
+   if abs(mob.x-player.x)+abs(mob.y-player.y) > max_path then
+    return
+   end
+   
+   local moves=get_path_moves(mob,{{player.x,player.y},selected_move})
+   local filtered={}
+   foreach(moves,function(move)
+    if not mobs.by_coord[move[1]][move[2]] then
+     add(filtered,move)
+    end
+   end)
+   
+   sort(filtered,function(a,b)
+    return (abs(a[1]-player.x)+abs(a[2]-player.y) > abs(b[1]-player.x)+abs(b[2]-player.y))
+   end)
+   
+   if #filtered > 0 then
+    mob.move_to(filtered[1][1],filtered[1][2])
+   end
+  end)
+ end,
+ draw=function()
+  foreach(mobs.all,function(mob)
+   pal()
+   if mob.col == 11 then
+    pal(11,3)
+   else
+    pal(11,2)
+   end
+   spr(3,mob.x*8,mob.y*8)
+  end)
+ end
+}
+for x=1,10 do
+ mobs.by_coord[x]={}
+ for y=1,10 do
+  mobs.by_coord[x][y]=false
+ end
+end
+
+function spawn_mob(x,y,col)
+ local mob = {
+  x=x,
+  y=y,
+  col=col
+ }
+ mob.move_to=function(x,y)
+  mobs.by_coord[mob.x][mob.y]=false
+  mob.x=x
+  mob.y=y
+  mobs.by_coord[x][y]=mob
+ end
+ if is_valid_move(x,y,mob) then
+  if not mobs.by_coord[x][y] then
+   add(mobs.all,mob)
+   mobs.by_coord[x][y]=mob
+  end
+ end
+end
+
 __gfx__
 00000000565656560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000001555555500c77c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700555555560c7cc7c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000770001555555507c77c7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000770005555555607c77c7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700155555550c7cc7c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700555555560c7cc7c00001b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000770001555555507c77c70001b1b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000770005555555607c77c70001bbb00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700155555550c7cc7c00001b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000005555555600c77c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000151515150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
