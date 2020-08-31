@@ -42,7 +42,10 @@ end
 
 function _update60()
  if(btnp(4)) then
-  mobs.move()
+  if selected_move[1] != player.x or selected_move[2] != player.y then
+   mobs.move()
+  end
+  
   choose_move()
  end
  if(btnp(0)) then
@@ -331,7 +334,8 @@ mobs = {
    if player.col == 0 or player.col == mob.col then
     return
    end
-   if abs(mob.x-player.x)+abs(mob.y-player.y) > max_path then
+   local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
+   if cart_dist<=1 or cart_dist>max_path then
     return
    end
    
