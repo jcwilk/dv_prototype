@@ -77,12 +77,17 @@ function _draw()
   spr(1, t.x*8, t.y*8)
   pal()
  end)
+ if player.col != 0 then
+  pal(12,player.col)
+ end
  spr(2, player.x*8, player.y*8)
+ pal()
 end
 -->8
 player = {
  x=1,
- y=1
+ y=1,
+ col=0
 }
 
 selected_move=nil
@@ -184,10 +189,35 @@ function select_player_tile()
 end
 
 function choose_move()
- player.x=selected_move[1]
- player.y=selected_move[2]
+ if player.x == selected_move[1] and player.y == selected_move[2] then
+  exchange_color()
+ else
+  player.x=selected_move[1]
+  player.y=selected_move[2]
+ end
  highlight_moves()
  select_player_tile()
+end
+-->8
+function exchange_color()
+ local tile = tiles.by_coord[player.x][player.y]
+ 
+ if tile.col == 0 and player.col == 0 then
+  return
+ end
+ 
+ if player.col == 0 then
+  player.col = tile.col
+  tile.col = 0
+  return
+ end
+ 
+ if tile.col == 0 then
+  tile.col = player.col
+  player.col = 0
+  return
+ end
+ 
 end
 __gfx__
 00000000565656560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
