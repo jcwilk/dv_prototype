@@ -246,10 +246,24 @@ function exchange_color()
 end
 
 function spawn_around(x,y,col)
- spawn_mob(x-1,y,col)
- spawn_mob(x+1,y,col)
- spawn_mob(x,y-1,col)
- spawn_mob(x,y+1,col)
+ local spots = {
+  {x-1,y},
+  {x+1,y},
+  {x,y-1},
+  {x,y+1}
+ }
+ local shuffled = {}
+ local spot
+ while #spots > 0 do
+  spot = rnd(spots)
+  del(spots,spot)
+  add(shuffled,spot)
+ end
+ for i=1,#shuffled do
+  if spawn_mob(shuffled[i][1],shuffled[i][2],col) then
+   return
+  end
+ end
 end
 -->8
 max_path=4
@@ -397,8 +411,10 @@ function spawn_mob(x,y,col)
   if not mobs.by_coord[x][y] then
    add(mobs.all,mob)
    mobs.by_coord[x][y]=mob
+   return mob
   end
  end
+ return false
 end
 
 __gfx__
