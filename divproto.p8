@@ -41,6 +41,11 @@ function _init()
 end
 
 function _update60()
+ if #anims.all>0 then
+  anims.tick()
+  return
+ end
+ 
  if(btnp(4)) then
   if selected_move[1] != player.x or selected_move[2] != player.y then
    mobs.move()
@@ -209,13 +214,24 @@ end
 function choose_move()
  if player.x == selected_move[1] and player.y == selected_move[2] then
   exchange_color()
+  anims.after(function()
+   //dupt
+	  highlight_moves()
+	  select_player_tile()
+	 end)
  else
-  player.x=selected_move[1]
-  player.y=selected_move[2]
-  exchange_color()
+  //player.x=selected_move[1]
+  //player.y=selected_move[2]
+  //make_tween2(player,"x","y",selected_move[1],selected_move[2],6)
+  make_path_tween(player,selected_move,6).after=function()
+   exchange_color()
+   anims.after(function()
+    //dupt
+		  highlight_moves()
+		  select_player_tile()
+		 end)
+  end
  end
- highlight_moves()
- select_player_tile()
 end
 -->8
 function exchange_color()
@@ -282,14 +298,23 @@ function get_path_moves(entity,obstacles)
  
  local moves={}
  
- local function expand(x,y,step)
+ local function expand(x,y,steps)
+  local step = #steps
   if step > max_path or (seen[x][y] and seen[x][y] <= step) then
    return
   end
   
   local add_it=true
   if seen[x][y] then
-   add_it=false
+   //add_it=false
+   local i=1
+   while i<#moves do
+    if moves[i][1]==x and moves[i][2]==y then
+     deli(moves,i)
+    else
+     i+=1
+    end
+   end
   end
   seen[x][y] = step
   
@@ -301,13 +326,19 @@ function get_path_moves(entity,obstacles)
    end
    
    if add_it then
-    add(moves, {x,y})
+    add(moves, {x,y,steps})
    end
    
-   expand(x-1,y,step+1)
-   expand(x+1,y,step+1)
-   expand(x,y-1,step+1)
-   expand(x,y+1,step+1)
+   local next_steps = {}
+   foreach(steps,function(s)
+    add(next_steps,s)
+   end)
+   add(next_steps,{x,y})
+   
+   expand(x-1,y,next_steps)
+   expand(x+1,y,next_steps)
+   expand(x,y-1,next_steps)
+   expand(x,y+1,next_steps)
    //for ix=x-1,x+1 do
    // for iy=y-1,y+1 do
    //  expand(ix,iy,step+1)
@@ -316,7 +347,7 @@ function get_path_moves(entity,obstacles)
   end
  end
  
- expand(entity.x,entity.y,0)
+ expand(entity.x,entity.y,{})
  
  sort(moves,function(a,b)
   return a[2]>b[2] or (a[2]==b[2] and a[1]>b[1])
@@ -373,7 +404,7 @@ mobs = {
    end)
    
    if #filtered > 0 then
-    mob.move_to(filtered[1][1],filtered[1][2])
+    mob.move_to(filtered[1])
    end
   end)
  end,
@@ -403,11 +434,13 @@ function spawn_mob(x,y,col)
   y=y,
   col=col
  }
- mob.move_to=function(x,y)
+ mob.move_to=function(move)
   mobs.by_coord[mob.x][mob.y]=false
-  mob.x=x
-  mob.y=y
-  mobs.by_coord[x][y]=mob
+  //make_tween2(mob,"x","y",x,y,6)
+  make_path_tween(mob,move,8)
+  //mob.x=x
+  //mob.y=y
+  mobs.by_coord[move[1]][move[2]]=mob
  end
  if is_valid_move(x,y,mob) then
   if not mobs.by_coord[x][y] then
@@ -419,6 +452,118 @@ function spawn_mob(x,y,col)
  return false
 end
 
+-->8
+anims={
+ all={},
+ after_all={},
+ tick=function()
+  local next_anims=anims.all
+  anims.all={}
+  local anim
+  for i=1,#next_anims do
+   anim=next_anims[i]
+   anim.t+=1
+   if anim.t<=anim.max then
+    anim.call(anim.t)
+    if anim.t<anim.max then
+     add(anims.all,anim)
+    elseif anim.after then
+     anim.after()
+    end
+   elseif anim.after then
+    anim.after()
+   end
+  end
+//  anims.all=next_anims
+  if #anims.all == 0 then
+   while #anims.after_all>0 do
+    local afters=anims.after_all
+    anims.after_all={}
+    for i=1,#afters do
+     afters[i]()
+    end
+    if #anims.all>0 then
+     return
+    end
+   end
+  end
+ end,
+ after=function(cb)
+  if #anims.all>0 then
+   add(anims.after_all,cb)
+  else
+   cb()
+  end
+ end
+}
+
+function make_tween2(obj,attr1,attr2,final1,final2,t_max)
+ local container={}
+ local call2=call_x(2,function()
+  if container.after then
+   container.after()
+  end
+ end)
+ make_tween(obj,attr1,final1,t_max).after=call2
+ make_tween(obj,attr2,final2,t_max).after=call2
+ return container
+end
+
+function make_tween(obj,attr,final,t_max)
+ local start=obj[attr]
+ local dt=(final-start)/t_max
+ local anim={
+  t=0,
+  max=t_max,
+  call=function(t_curr)
+   obj[attr]+=dt
+   if t_curr>=t_max then
+    obj[attr]=final
+   end
+  end
+ }
+ add(anims.all,anim)
+ return anim
+end
+
+function make_path_tween(obj,move,t_each)
+ local moves={}
+ for i=2,#move[3] do
+  add(moves,move[3][i])
+ end
+ add(moves,move)
+ //debug_moves=moves
+ //dsfgs●()
+ 
+ if #moves > 0 then
+  local cb_container={}
+  local next_cb=function()
+   if cb_container.after then
+    cb_container.after()
+   end
+  end
+  for i=#moves,1,-1 do
+   (function(move)
+    local cb=next_cb
+    next_cb=function()
+     local tw=make_tween2(obj,"x","y",move[1],move[2],t_each)
+     tw.after=cb
+    end
+  	end)(moves[i])
+  end
+  next_cb()
+  return cb_container
+ end
+end
+
+function call_x(cnt,fn)
+ return function(arg)
+  cnt-=1
+  if cnt<=0 then
+   fn(arg)
+  end
+ end
+end
 __gfx__
 00000000565656560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000001555555500c77c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
