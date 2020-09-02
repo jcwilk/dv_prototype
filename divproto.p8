@@ -136,8 +136,11 @@ function highlight_moves()
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = false
  end)
-  
- highlighted_moves=get_path_moves(player,mobs.get_all_coords())
+ local max_path=2
+ if player.col!=0 then
+  max_path=4
+ end
+ highlighted_moves=get_path_moves(player,mobs.get_all_coords(),max_path)
  foreach(highlighted_moves,function(move)  
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = true  
@@ -293,8 +296,7 @@ function spawn_around(x,y,col)
  end
 end
 -->8
-max_path=4
-function get_path_moves(entity,obstacles)
+function get_path_moves(entity,obstacles,max_path)
  if not obstacles then
   obstacles={}
  end
@@ -378,6 +380,7 @@ function sort(a,cmp)
 end
 -->8
 mob_spd=8
+mob_max_path=4
 mobs = {
  all={},
  by_coord={},
@@ -454,11 +457,11 @@ mobs = {
     return
    end
    local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
-   if cart_dist<=1 or cart_dist>max_path then
+   if cart_dist<=1 or cart_dist>mob_max_path then
     return
    end
    
-   local moves=get_path_moves(mob,{{player.x,player.y},selected_move})
+   local moves=get_path_moves(mob,{{player.x,player.y},selected_move},mob_max_path)
    local filtered={}
    foreach(moves,function(move)
     if not mobs.by_coord[move[1]][move[2]] then
