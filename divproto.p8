@@ -401,28 +401,42 @@ mobs = {
   end)
   local mob,fn
   while #checking>0 do
-   dbg=checking
    mob=deli(checking,1)
    
    fn=function(mob)
     local check
     local anim
+    local found
 
     for i=1,#checking do
      check=checking[i]
+     found=false
      if check.col != mob.col then
 	     if check.x == mob.x then
 	      if check.y == mob.y-1 or check.y == mob.y+1 then
-	       anim=make_tween2(mob,"x","y",check.x,check.y,mob_spd)
+	       found=true
 	      end
 	     elseif check.y == mob.y then
 	      if check.x == mob.x-1 or check.x == mob.x+1 then
-	       anim=make_tween2(mob,"x","y",check.x,check.y,mob_spd)
+	       found=true
 	      end
 	     end
      end
-     if anim then
-      anim.after=function()
+     local a,b
+     if found then
+      found=false
+      if tiles.by_coord[mob.x][mob.y].col == 0 then
+       found=true
+       a=check
+       b=mob
+      elseif tiles.by_coord[check.x][check.y].col == 0 then      
+       found=true
+       a=mob
+       b=check
+      end
+     end
+     if found then
+      make_tween2(a,"x","y",b.x,b.y,mob_spd).after=function()
 							del(mobs.all,mob)
 							del(mobs.all,check)
       end
