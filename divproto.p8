@@ -511,8 +511,8 @@ end
 
 function spawn_mob(x,y,col)
  local mob = {
-  x=x,
-  y=y,
+  x=player.x,
+  y=player.y,
   col=col
  }
  mob.move_to=function(move)
@@ -527,6 +527,7 @@ function spawn_mob(x,y,col)
   if not mobs.by_coord[x][y] then
    add(mobs.all,mob)
    mobs.by_coord[x][y]=mob
+   make_tween2(mob,"x","y",x,y,mob_spd)
    return mob
   end
  end
