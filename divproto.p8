@@ -564,12 +564,12 @@ end
 
 function make_tween(obj,attr,final,t_max)
  local start=obj[attr]
- local dt=(final-start)/t_max
+ local dt=final-start
  local anim={
   t=0,
   max=t_max,
   call=function(t_curr)
-   obj[attr]+=dt
+   obj[attr]=start+(t_curr/t_max)^2*dt
    if t_curr>=t_max then
     obj[attr]=final
    end
