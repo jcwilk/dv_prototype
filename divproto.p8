@@ -377,6 +377,7 @@ function sort(a,cmp)
   end
 end
 -->8
+mob_spd=8
 mobs = {
  all={},
  by_coord={},
@@ -392,7 +393,49 @@ mobs = {
   //local mobsby_coord=mobs.by_coord
   //mobs.all={}
   //mobs.by_coord={}
+  local checking={}
+  local moving={}
   foreach(mobs.all,function(mob)
+   add(checking,mob)
+   add(moving,mob)
+  end)
+  local mob,fn
+  while #checking>0 do
+   dbg=checking
+   mob=deli(checking,1)
+   
+   fn=function(mob)
+    local check
+    local anim
+
+    for i=1,#checking do
+     check=checking[i]
+     if check.col != mob.col then
+	     if check.x == mob.x then
+	      if check.y == mob.y-1 or check.y == mob.y+1 then
+	       anim=make_tween2(mob,"x","y",check.x,check.y,mob_spd)
+	      end
+	     elseif check.y == mob.y then
+	      if check.x == mob.x-1 or check.x == mob.x+1 then
+	       anim=make_tween2(mob,"x","y",check.x,check.y,mob_spd)
+	      end
+	     end
+     end
+     if anim then
+      anim.after=function()
+							del(mobs.all,mob)
+							del(mobs.all,check)
+      end
+      deli(checking,i)
+      del(moving,check)
+      del(moving,mob)
+      return
+     end
+    end
+   end
+   fn(mob)
+  end
+  foreach(moving,function(mob)
    if player.col == mob.col then
     return
    end
