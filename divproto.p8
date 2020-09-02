@@ -393,7 +393,7 @@ mobs = {
   //mobs.all={}
   //mobs.by_coord={}
   foreach(mobs.all,function(mob)
-   if player.col == 0 or player.col == mob.col then
+   if player.col == mob.col then
     return
    end
    local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
