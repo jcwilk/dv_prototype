@@ -55,22 +55,32 @@ function _update60()
   choose_move()
  end
  if(btnp(0)) then
-  sfx(2)
-  select_move(selected_index-1)
+  local i=find_left_move()
+  if i!=selected_index then
+   sfx(2)
+   select_move(i)
+  end
  end
  if(btnp(1)) then
-  sfx(2)
-  select_move(selected_index+1)
+  local i=find_right_move()
+  if i!=selected_index then
+   sfx(2)
+   select_move(i)
+  end
  end
  if(btnp(2)) then
-  sfx(2)
   local i=find_higher_move()
-  select_move(i)
+  if i!=selected_index then
+   sfx(2)
+   select_move(i)
+  end
  end
  if(btnp(3)) then
-  sfx(2)
   local i=find_lower_move()
-  select_move(i)
+  if i!=selected_index then
+   sfx(2)
+   select_move(i)
+  end
  end
 end
 
@@ -175,17 +185,29 @@ function get_moves()
  return moves
 end
 
+function find_left_move()
+ if selected_index!=1 then
+  if highlighted_moves[selected_index-1][2] == selected_move[2] then
+   return selected_index-1
+  end
+ end
+ return selected_index
+end
+
+function find_right_move()
+ if selected_index!=#highlighted_moves then
+  if highlighted_moves[selected_index+1][2] == selected_move[2] then
+   return selected_index+1
+  end
+ end
+ return selected_index
+end
+
 function find_lower_move()
  local found=nil
  for i=selected_index,#highlighted_moves do
   local move = highlighted_moves[i]
   if move[2] > selected_move[2] and move[1] == selected_move[1] then
-   return i
-  end
- end
- for i=1,selected_index do
-  local move = highlighted_moves[i]
-  if move[2] < selected_move[2] and move[1] == selected_move[1] then
    return i
   end
  end
@@ -197,12 +219,6 @@ function find_higher_move()
  for i=selected_index,1,-1 do
   local move = highlighted_moves[i]
   if move[2] < selected_move[2] and move[1] == selected_move[1] then
-   return i
-  end
- end
- for i=#highlighted_moves,selected_index,-1 do
-  local move = highlighted_moves[i]
-  if move[2] > selected_move[2] and move[1] == selected_move[1] then
    return i
   end
  end
