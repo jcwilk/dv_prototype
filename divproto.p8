@@ -1,6 +1,25 @@
 pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
+
+colors = {
+  {8,2},//red,purp
+  {12,1},//blue,dkblue
+  {11,3},//green,dkgreen
+  {9,4},//orange,brown
+  {14,2}//pink,purple
+}
+
+colia=1
+colib=3
+function set_colors(a,b)
+ cola1=colors[a][1]
+ cola2=colors[a][2]
+ colb1=colors[b][1]
+ colb2=colors[b][2]
+end
+set_colors(colia,colib)
+
 function make_tile(x,y)
  local tile = {
   x=x,
@@ -8,15 +27,15 @@ function make_tile(x,y)
   col_amount = rnd(1),
   col = 0 // 0 means no color
  }
-  
+
  if rnd(1) < .4 then
   if rnd(1) < .5 then
-   tile.col = 8
+   tile.col = cola1
   else
-   tile.col = 11
+   tile.col = colb1
   end
  end
-  
+
  return tile
 end
 
@@ -46,7 +65,7 @@ function _update60()
   anims.tick()
   return
  end
- 
+
  if(btnp(4)) then
   choose_move()
  end
@@ -80,17 +99,22 @@ function _draw()
   pal()
   if t.col > 0 then
    pal(5,t.col)
+   if t.col == cola1 then
+    pal(1,cola2)
+   else
+    pal(1,colb2)
+   end
   end
   spr(1, t.x*8, t.y*8)
  end)
- 
+
  pal()
  if player.col != 0 then
   pal(15,player.col)
-  if player.col == 11 then
-   pal(7,3)
+  if player.col == cola1 then
+   pal(7,cola2)
   else
-   pal(7,2)
+   pal(7,colb2)
   end
  else
   pal(15,6)
@@ -105,7 +129,6 @@ function _draw()
    pal()
    spr(4, t.x*8, t.y*8)
    if t.selected then
-    pal()
     spr(5, t.x*8, t.y*8)
    end
   end
@@ -125,7 +148,7 @@ function select_move(index)
  if(selected_move) then
   tiles.by_coord[selected_move[1]][selected_move[2]].selected=false
  end
- 
+
  while(index < 1) do
   index += #highlighted_moves
  end
@@ -133,7 +156,7 @@ function select_move(index)
   index -= #highlighted_moves
  end
 
- selected_index = index 
+ selected_index = index
  selected_move = highlighted_moves[index]
  tiles.by_coord[selected_move[1]][selected_move[2]].selected=true
 end
@@ -145,9 +168,9 @@ function highlight_moves()
   max_path=4
  end
  highlighted_moves=get_path_moves(player,mobs.get_all_coords(),max_path)
- foreach(highlighted_moves,function(move)  
+ foreach(highlighted_moves,function(move)
   local tile = tiles.by_coord[move[1]][move[2]]
-  tile.highlighted = true  
+  tile.highlighted = true
  end)
 end
 
@@ -264,30 +287,30 @@ end
 -->8
 function exchange_color()
  local tile = tiles.by_coord[player.x][player.y]
- 
+
  if tile.col == 0 and player.col == 0 then
   return
  end
- 
+
  if player.col == 0 then
   sfx(0)
   player.col = tile.col
   tile.col = 0
-  local spawn_col=11
-  if player.col == 11 then
-   spawn_col=8
+  local spawn_col=cola1
+  if player.col == cola1 then
+   spawn_col=colb1
   end
   spawn_around(player.x,player.y,spawn_col)
   return
  end
- 
+
  if tile.col == 0 then
   sfx(1)
   tile.col = player.col
   player.col = 0
   spawn_around(player.x,player.y,tile.col)
   return
- end 
+ end
 end
 
 function spawn_around(x,y,col)
@@ -326,15 +349,15 @@ function get_path_moves(entity,obstacles,max_path)
    seen[x][y]=false
   end
  end
- 
+
  local moves={}
- 
+
  local function expand(x,y,steps)
   local step = #steps
   if step > max_path or (seen[x][y] and seen[x][y] <= step) then
    return
   end
-  
+
   local add_it=true
   if seen[x][y] then
    //add_it=false
@@ -348,24 +371,24 @@ function get_path_moves(entity,obstacles,max_path)
    end
   end
   seen[x][y] = step
-  
+
   if is_valid_move(x,y,entity) then
    for i=1,#obstacles do
     if x==obstacles[i][1] and y==obstacles[i][2] then
      return
     end
    end
-   
+
    if add_it then
     add(moves, {x,y,steps})
    end
-   
+
    local next_steps = {}
    foreach(steps,function(s)
     add(next_steps,s)
    end)
    add(next_steps,{x,y})
-   
+
    expand(x-1,y,next_steps)
    expand(x+1,y,next_steps)
    expand(x,y-1,next_steps)
@@ -377,13 +400,13 @@ function get_path_moves(entity,obstacles,max_path)
    //end
   end
  end
- 
+
  expand(entity.x,entity.y,{})
- 
+
  sort(moves,function(a,b)
   return a[2]>b[2] or (a[2]==b[2] and a[1]>b[1])
  end)
- 
+
  return moves
 end
 -->8
@@ -424,7 +447,7 @@ mobs = {
   local mob,fn
   while #checking>0 do
    mob=deli(checking,1)
-   
+
    fn=function(mob)
     local check
     local anim
@@ -451,7 +474,7 @@ mobs = {
        found=true
        a=check
        b=mob
-      elseif tiles.by_coord[check.x][check.y].col == 0 then      
+      elseif tiles.by_coord[check.x][check.y].col == 0 then
        found=true
        a=mob
        b=check
@@ -482,7 +505,7 @@ mobs = {
    if cart_dist<=1 or cart_dist>mob_max_path then
     return
    end
-   
+
    local moves=get_path_moves(mob,{{player.x,player.y},selected_move},mob_max_path)
    local filtered={}
    foreach(moves,function(move)
@@ -490,11 +513,11 @@ mobs = {
      add(filtered,move)
     end
    end)
-   
+
    sort(filtered,function(a,b)
     return (abs(a[1]-player.x)+abs(a[2]-player.y) > abs(b[1]-player.x)+abs(b[2]-player.y))
    end)
-   
+
    if #filtered > 0 then
     mob.move_to(filtered[1])
    end
@@ -503,11 +526,12 @@ mobs = {
  draw=function()
   foreach(mobs.all,function(mob)
    pal()
-   if mob.col == 11 then
-    //pal(11,3)
+   if mob.col == cola1 then
+    pal(11,cola1)
+    pal(3,cola2)
    else
-    pal(11,8)
-    pal(3,2)
+    pal(11,colb1)
+    pal(3,colb2)
    end
    spr(3,mob.x*8,mob.y*8)
   end)
@@ -627,7 +651,7 @@ function make_path_tween(obj,move,t_each)
  add(moves,move)
  //debug_moves=moves
  //dsfgs●()
- 
+
  if #moves > 0 then
   local cb_container={}
   local next_cb=function()
