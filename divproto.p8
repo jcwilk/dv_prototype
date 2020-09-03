@@ -304,7 +304,7 @@ function spawn_around(x,y,col)
   del(spots,spot)
   add(shuffled,spot)
  end
- local spawn_left=2
+ local spawn_left=1
  for i=1,#shuffled do
   if spawn_mob(shuffled[i][1],shuffled[i][2],col) then
    spawn_left-=1
