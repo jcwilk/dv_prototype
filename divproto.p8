@@ -275,12 +275,14 @@ function choose_move()
   //make_tween2(player,"x","y",selected_move[1],selected_move[2],6)
   make_path_tween(player,selected_move,6).after=function()
    exchange_color()
-			mobs.move()
    anims.after(function()
-    //dupt
-		  highlight_moves()
-		  select_player_tile()
-		 end)
+ 			mobs.move()
+    anims.after(function()
+     //dupt
+ 		  highlight_moves()
+ 		  select_player_tile()
+ 		 end)
+ 		end)
   end
  end
 end
@@ -328,8 +330,23 @@ function spawn_around(x,y,col)
   add(shuffled,spot)
  end
  local spawn_left=1
+ local shuffled2={}
  for i=1,#shuffled do
-  if spawn_mob(shuffled[i][1],shuffled[i][2],col) then
+  if mobs.by_coord[shuffled[i][1]][shuffled[i][2]] then
+   if spawn_mob(shuffled[i][1],shuffled[i][2],col) then
+    spawn_left-=1
+    if spawn_left<1 then
+     return
+    end
+   else
+    add(shuffled2,shuffled[i])
+   end
+  else
+   add(shuffled2,shuffled[i])
+  end
+ end
+ for i=1,#shuffled2 do
+  if spawn_mob(shuffled2[i][1],shuffled2[i][2],col) then
    spawn_left-=1
    if spawn_left<1 then
     return
@@ -481,13 +498,8 @@ mobs = {
       end
      end
      if found then
-      make_tween2(a,"x","y",b.x,b.y,mob_spd).after=function()
-							del(mobs.all,mob)
-							del(mobs.all,check)
-							mobs.by_coord[mob.x][mob.y]=false
-							mobs.by_coord[check.x][check.y]=false
-							sfx(4)
-      end
+      mob.cancel_out(check)
+      
       deli(checking,i)
       del(moving,check)
       del(moving,mob)
@@ -558,11 +570,24 @@ function spawn_mob(x,y,col)
   //mob.y=y
   mobs.by_coord[move[1]][move[2]]=mob
  end
+ mob.cancel_out=function(target)
+  make_tween2(mob,"x","y",target.x,target.y,mob_spd).after=function()
+			del(mobs.all,mob)
+			del(mobs.all,target)
+			mobs.by_coord[mob.x][mob.y]=false
+			mobs.by_coord[target.x][target.y]=false
+			sfx(4)
+  end
+ end
  if is_valid_move(x,y,mob) then
   if not mobs.by_coord[x][y] then
    add(mobs.all,mob)
    mobs.by_coord[x][y]=mob
    make_tween2(mob,"x","y",x,y,mob_spd)
+   return mob
+  elseif mobs.by_coord[x][y].col != mob.col then
+   add(mobs.all,mob)
+   mob.cancel_out(mobs.by_coord[x][y])
    return mob
   end
  end
