@@ -136,10 +136,6 @@ end
 
 highlighted_moves={}
 function highlight_moves()
- foreach(highlighted_moves,function(move)
-  local tile = tiles.by_coord[move[1]][move[2]]
-  tile.highlighted = false
- end)
  local max_path=2
  if player.col!=0 then
   max_path=4
@@ -148,6 +144,13 @@ function highlight_moves()
  foreach(highlighted_moves,function(move)  
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = true  
+ end)
+end
+
+function dehighlight_moves()
+ foreach(highlighted_moves,function(move)
+  local tile = tiles.by_coord[move[1]][move[2]]
+  tile.highlighted = false
  end)
 end
 
@@ -231,6 +234,7 @@ function select_player_tile()
 end
 
 function choose_move()
+ dehighlight_moves()
  if player.x == selected_move[1] and player.y == selected_move[2] then
   exchange_color()
   anims.after(function()
