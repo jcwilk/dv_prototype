@@ -48,10 +48,6 @@ function _update60()
  end
  
  if(btnp(4)) then
-  if selected_move[1] != player.x or selected_move[2] != player.y then
-   mobs.move()
-  end
-  
   choose_move()
  end
  if(btnp(0)) then
@@ -248,6 +244,7 @@ function choose_move()
   //make_tween2(player,"x","y",selected_move[1],selected_move[2],6)
   make_path_tween(player,selected_move,6).after=function()
    exchange_color()
+			mobs.move()
    anims.after(function()
     //dupt
 		  highlight_moves()
