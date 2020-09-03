@@ -453,6 +453,8 @@ mobs = {
       make_tween2(a,"x","y",b.x,b.y,mob_spd).after=function()
 							del(mobs.all,mob)
 							del(mobs.all,check)
+							mobs.by_coord[mob.x][mob.y]=false
+							mobs.by_coord[check.x][check.y]=false
 							sfx(4)
       end
       deli(checking,i)
