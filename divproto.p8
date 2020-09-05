@@ -43,11 +43,11 @@ tiles = {}
 tiles.all = {}
 tiles.by_coord = {}
 
-for x=1,10 do
+for x=0,15 do
  tiles.by_coord[x] = {}
 end
-for y=1,10 do
- for x=1,10 do
+for y=0,150 do
+ for x=0,15 do
   local tile = make_tile(x,y)
   tiles.by_coord[x][y] = tile
   add(tiles.all, tile)
@@ -57,6 +57,7 @@ end
 function _init()
  highlight_moves()
  select_player_tile()
+ init_mobs()
  cls()
 end
 
@@ -93,8 +94,16 @@ function press_with(fn)
  end
 end
 
+cam={x=0,y=0}
 function _draw()
- //cls()
+ while (player.y*8 - cam.y) > 90 do
+  cam.y+=1
+ end
+ while (player.y*8 - cam.y) < 38 do
+  cam.y-=1
+ end
+ camera(cam.x,cam.y)
+
  foreach(tiles.all,function(t)
   pal()
   if t.col > 0 then
@@ -137,8 +146,8 @@ function _draw()
 end
 -->8
 player = {
- x=1,
- y=1,
+ x=0,
+ y=0,
  col=0
 }
 
@@ -186,11 +195,15 @@ function is_valid_move(x,y,entity)
 end
 
 function is_on_map(x,y)
- return (x >= 1 and x <= 10 and y >= 1 and y <= 10)
+ //return (x >= 1 and x <= 10 and y >= 1 and y <= 10)
+ return (x >= 0 and x <= 15 and y >= 0 and y <= 150)
 end
 
 function is_color_compat(x,y,entity)
  local tile = tiles.by_coord[x][y]
+ globalx=x
+ globaly=y
+ globalentity=entity
  return(tile.col == 0 or entity.col == 0 or tile.col == entity.col)
 end
 
@@ -332,6 +345,7 @@ function spawn_around(x,y,col)
  for i=1,#shuffled do
   spot=shuffled[i]
   mob=false
+  gspot=spot
   if is_on_map(spot[1],spot[2]) then
    mob=mobs.by_coord[spot[1]][spot[2]]
   end
@@ -552,19 +566,23 @@ mobs = {
   end)
  end
 }
-for x=1,10 do
- mobs.by_coord[x]={}
- for y=1,10 do
-  mobs.by_coord[x][y]=false
+foreach(tiles.all,function(tile)
+ if not mobs.by_coord[tile.x] then
+  mobs.by_coord[tile.x]={}
  end
-end
+ mobs.by_coord[tile.x][tile.y]=false
+end)
 
-function spawn_mob(x,y,col)
+function spawn_mob(x,y,col,skip_tween)
  local mob = {
   x=player.x,
   y=player.y,
   col=col
  }
+ if skip_tween then
+  mob.x=x
+  mob.y=y
+ end
  mob.move_to=function(move)
   mobs.by_coord[mob.x][mob.y]=false
   //make_tween2(mob,"x","y",x,y,6)
@@ -597,6 +615,28 @@ function spawn_mob(x,y,col)
  return false
 end
 
+function init_mobs()
+ for i=1,300 do
+  local spawned=false
+  local tile, mob, col
+  while not spawned do
+   tile=rnd(tiles.all)
+   mob=mobs.by_coord[tile.x][tile.y]
+   if not mob then
+    spawned=true
+    col=tile.col
+    if col == 0 then
+     if rnd() < 0.5 then
+      col=cola1
+     else
+      col=colb1
+     end
+    end
+    spawn_mob(tile.x,tile.y,col,true)
+   end
+  end
+ end
+end
 -->8
 anims={
  all={},
