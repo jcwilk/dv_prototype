@@ -182,14 +182,11 @@ function dehighlight_moves()
 end
 
 function is_valid_move(x,y,entity)
- if x >= 1 and x <= 10 then
-  if y >= 1 and y <= 10 then
-   if is_color_compat(x,y,entity) then
- 	  return true
-	  end
-  end
- end
- return false
+ return (is_on_map(x,y) and is_color_compat(x,y,entity))
+end
+
+function is_on_map(x,y)
+ return (x >= 1 and x <= 10 and y >= 1 and y <= 10)
 end
 
 function is_color_compat(x,y,entity)
@@ -331,18 +328,24 @@ function spawn_around(x,y,col)
  end
  local spawn_left=1
  local shuffled2={}
+ local mob
  for i=1,#shuffled do
-  if mobs.by_coord[shuffled[i][1]][shuffled[i][2]] then
-   if spawn_mob(shuffled[i][1],shuffled[i][2],col) then
+  spot=shuffled[i]
+  mob=false
+  if is_on_map(spot[1],spot[2]) then
+   mob=mobs.by_coord[spot[1]][spot[2]]
+  end
+  if mob and mob.col != col then
+   if spawn_mob(spot[1],spot[2],col) then
     spawn_left-=1
     if spawn_left<1 then
      return
     end
    else
-    add(shuffled2,shuffled[i])
+    add(shuffled2,spot)
    end
   else
-   add(shuffled2,shuffled[i])
+   add(shuffled2,spot)
   end
  end
  for i=1,#shuffled2 do
