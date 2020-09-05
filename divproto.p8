@@ -622,7 +622,7 @@ function init_mobs()
   while not spawned do
    tile=rnd(tiles.all)
    mob=mobs.by_coord[tile.x][tile.y]
-   if not mob then
+   if (not mob) and player.x != tile.x and player.y != tile.y then
     spawned=true
     col=tile.col
     if col == 0 then
