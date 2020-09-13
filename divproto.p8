@@ -207,7 +207,7 @@ highlighted_moves={}
 function highlight_moves()
  local max_path=2
  if player.col!=0 then
-  max_path=5-player.count
+  max_path=7-player.count
  end
  highlighted_moves=get_path_moves(player,mobs.get_all_coords(),max_path)
  foreach(highlighted_moves,function(move)
@@ -305,9 +305,12 @@ end
 
 function choose_move()
  dehighlight_moves()
+ local exchange = player.col != 0 or selected_move[1] != player.x or selected_move[2] != player.y
  
  make_path_tween(player,selected_move,6).after=function()
-  exchange_color()
+  if exchange then
+   exchange_color()
+  end
   anims.after(function()
 			mobs.move()
    anims.after(function()
@@ -568,7 +571,7 @@ end
 
 -->8
 mob_spd=8
-mob_max_path=4
+mob_max_path=3
 mobs = {
  all={},
  by_coord={},
