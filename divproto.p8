@@ -173,7 +173,7 @@ highlighted_moves={}
 function highlight_moves()
  local max_path=2
  if player.col!=0 then
-  max_path=4
+  max_path=5-player.count
  end
  highlighted_moves=get_path_moves(player,mobs.get_all_coords(),max_path)
  foreach(highlighted_moves,function(move)
@@ -292,25 +292,29 @@ function exchange_color()
   return
  end
 
- if player.col == 0 then
-  sfx(0)
-  player.col = tile.col
-  tile.col = 0
-  local spawn_col=cola1
-  if player.col == cola1 then
-   spawn_col=colb1
-  end
-  spawn_around(player.x,player.y,spawn_col)
-  return
- end
-
  if tile.col == 0 then
   sfx(1)
   tile.col = player.col
   player.col = 0
   spawn_around(player.x,player.y,tile.col)
+  player.count=1
   return
  end
+ 
+ if player.col == 0 then
+  player.col = tile.col
+  player.count = 1
+ else
+  player.count+= 1
+ end
+ 
+ sfx(0)
+ tile.col = 0
+ local spawn_col=cola1
+ if player.col == cola1 then
+  spawn_col=colb1
+ end
+ spawn_around(player.x,player.y,spawn_col)
 end
 
 function spawn_around(x,y,col)
@@ -328,6 +332,10 @@ function spawn_around(x,y,col)
   add(shuffled,spot)
  end
  local spawn_left=1
+ if player.col == 0 then
+  spawn_left=player.count
+ end
+ 
  local shuffled2={}
  local mob
  for i=1,#shuffled do
