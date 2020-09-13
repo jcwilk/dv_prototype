@@ -45,6 +45,16 @@ end
 tiles = {}
 tiles.all = {}
 tiles.by_coord = {}
+tiles.update = function()
+ local t
+ local starti=flr(cam.y/8)*16+1
+ local endi=flr((cam.y+128)/8+1)*16
+ starti=mid(starti,1,#tiles.all)
+ endi=mid(endi,1,#tiles.all)
+ for i=starti,endi do
+  tiles.all[i].update()
+ end
+end
 
 function init_tiles()
  for x=0,15 do
@@ -69,13 +79,14 @@ function _init()
 end
 
 function _update60()
+ tiles.update()
+ player.update()
+ particles.update()
+ 
  if #anims.all>0 then
   anims.tick()
   return
  end
- 
- player.update()
- particles.update()
 
  if(btnp(4)) then
   choose_move()
@@ -91,15 +102,6 @@ function _update60()
  end
  if(btnp(3)) then
   press_with(find_lower_move)
- end
- 
- local t
- local starti=flr(cam.y/8)*16+1
- local endi=flr((cam.y+128)/8+1)*16
- starti=mid(starti,1,#tiles.all)
- endi=mid(endi,1,#tiles.all)
- for i=starti,endi do
-  tiles.all[i].update()
  end
 end
 
@@ -207,7 +209,7 @@ highlighted_moves={}
 function highlight_moves()
  local max_path=2
  if player.col!=0 then
-  max_path=7-player.count
+  max_path=max(0,7-player.count)
  end
  highlighted_moves=get_path_moves(player,mobs.get_all_coords(),max_path)
  foreach(highlighted_moves,function(move)
@@ -349,6 +351,9 @@ function exchange_color()
   player.count = tile.count
  else
   player.count+= tile.count
+ end
+ 
+ if player.count > 1 then
   player.emit(20/player.count,player.col)
  end
  
