@@ -524,7 +524,7 @@ mobs = {
      end
     end
    end
-   fn(mob)
+   //fn(mob)
   end
   foreach(moving,function(mob)
    if player.col == mob.col then
