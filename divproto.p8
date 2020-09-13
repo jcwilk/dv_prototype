@@ -96,11 +96,10 @@ end
 
 cam={x=0,y=0}
 function _draw()
- while (player.y*8 - cam.y) > 90 do
-  cam.y+=1
- end
- while (player.y*8 - cam.y) < 38 do
-  cam.y-=1
+ if player.y*8 < 60 then
+  cam.y=0
+ else
+  cam.y=player.y*8 - 60
  end
  camera(cam.x,cam.y)
 
