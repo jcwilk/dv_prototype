@@ -271,28 +271,17 @@ end
 
 function choose_move()
  dehighlight_moves()
- if player.x == selected_move[1] and player.y == selected_move[2] then
+ 
+ make_path_tween(player,selected_move,6).after=function()
   exchange_color()
   anims.after(function()
-   //dupt
-	  highlight_moves()
-	  select_player_tile()
-	 end)
- else
-  //player.x=selected_move[1]
-  //player.y=selected_move[2]
-  //make_tween2(player,"x","y",selected_move[1],selected_move[2],6)
-  make_path_tween(player,selected_move,6).after=function()
-   exchange_color()
+			mobs.move()
    anims.after(function()
- 			mobs.move()
-    anims.after(function()
-     //dupt
- 		  highlight_moves()
- 		  select_player_tile()
- 		 end)
- 		end)
-  end
+    //dupt
+		  highlight_moves()
+		  select_player_tile()
+		 end)
+		end)
  end
 end
 -->8
