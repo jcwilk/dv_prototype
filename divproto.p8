@@ -24,8 +24,9 @@ function make_tile(x,y)
  local tile = {
   x=x,
   y=y,
-  col_amount = rnd(1),
-  col = 0 // 0 means no color
+  col_amount=rnd(1),
+  col=0, // 0 means no color
+  count=1
  }
 
  if rnd(1) < .4 then
@@ -35,6 +36,8 @@ function make_tile(x,y)
    tile.col = colb1
   end
  end
+ 
+ as_emitter(tile)
 
  return tile
 end
@@ -43,18 +46,22 @@ tiles = {}
 tiles.all = {}
 tiles.by_coord = {}
 
-for x=0,15 do
- tiles.by_coord[x] = {}
-end
-for y=0,150 do
+function init_tiles()
  for x=0,15 do
-  local tile = make_tile(x,y)
-  tiles.by_coord[x][y] = tile
-  add(tiles.all, tile)
+  tiles.by_coord[x] = {}
+ end
+ for y=0,150 do
+  for x=0,15 do
+   local tile = make_tile(x,y)
+   tiles.by_coord[x][y] = tile
+   add(tiles.all, tile)
+  end
  end
 end
 
 function _init()
+ init_tiles()
+ init_player()
  highlight_moves()
  select_player_tile()
  init_mobs()
@@ -66,6 +73,9 @@ function _update60()
   anims.tick()
   return
  end
+ 
+ player.update()
+ particles.update()
 
  if(btnp(4)) then
   choose_move()
@@ -81,6 +91,15 @@ function _update60()
  end
  if(btnp(3)) then
   press_with(find_lower_move)
+ end
+ 
+ local t
+ local starti=flr(cam.y/8)*16+1
+ local endi=flr((cam.y+128)/8+1)*16
+ starti=mid(starti,1,#tiles.all)
+ endi=mid(endi,1,#tiles.all)
+ for i=starti,endi do
+  tiles.all[i].update()
  end
 end
 
@@ -103,7 +122,14 @@ function _draw()
  end
  camera(cam.x,cam.y)
 
- foreach(tiles.all,function(t)
+ local t
+ local starti=flr(cam.y/8)*16+1
+ local endi=flr((cam.y+128)/8+1)*16
+ starti=mid(starti,1,#tiles.all)
+ endi=mid(endi,1,#tiles.all)
+ for i=starti,endi do
+  t=tiles.all[i]
+
   pal()
   if t.col > 0 then
    pal(5,t.col)
@@ -114,7 +140,7 @@ function _draw()
    end
   end
   spr(1, t.x*8, t.y*8)
- end)
+ end
 
  pal()
  if player.col != 0 then
@@ -128,9 +154,10 @@ function _draw()
   pal(15,6)
  end
  spr(2, player.x*8, player.y*8)
-
 	pal()
  mobs.draw()
+ pal()
+	particles.draw()
 
  foreach(tiles.all,function(t)
   if t.highlighted then
@@ -142,13 +169,20 @@ function _draw()
   end
  end)
  pal()
+ //rectfill(0,0,23,11,0)
+ //print(stat(7),0,0,6)
+ //print(stat(1),0,6,6)
 end
 -->8
-player = {
- x=0,
- y=0,
- col=0
-}
+function init_player()
+ player = {
+  x=0,
+  y=0,
+  col=0
+ }
+ as_emitter(player)
+ //player.emit(10,player.col)
+end
 
 selected_move=nil
 selected_index=1
@@ -295,29 +329,38 @@ function exchange_color()
  if tile.col == 0 then
   sfx(1)
   tile.col = player.col
+  tile.count = player.count
+  if tile.count > 1 then
+   tile.emit(20/tile.count,tile.col)
+  end
   player.col = 0
-  spawn_around(player.x,player.y,tile.col)
+  player.disable_emitter()
+  spawn_around(player.x,player.y,tile.col,tile.count)
   player.count=1
   return
  end
- 
+
+ local tile_count=tile.count 
  if player.col == 0 then
   player.col = tile.col
-  player.count = 1
+  player.count = tile.count
  else
-  player.count+= 1
+  player.count+= tile.count
+  player.emit(20/player.count,player.col)
  end
  
  sfx(0)
  tile.col = 0
+ tile.count = 1
+ tile.disable_emitter()
  local spawn_col=cola1
  if player.col == cola1 then
   spawn_col=colb1
  end
- spawn_around(player.x,player.y,spawn_col)
+ spawn_around(player.x,player.y,spawn_col,tile_count)
 end
 
-function spawn_around(x,y,col)
+function spawn_around(x,y,col,amount)
  local spots = {
   {x-1,y},
   {x+1,y},
@@ -331,7 +374,7 @@ function spawn_around(x,y,col)
   del(spots,spot)
   add(shuffled,spot)
  end
- local spawn_left=1
+ local spawn_left=min(amount,4)
  if player.col == 0 then
   spawn_left=player.count
  end
@@ -450,6 +493,79 @@ function sort(a,cmp)
     end
   end
 end
+
+particles={
+ all={},
+ make=function(x,y,dx,dy,max_t,col)
+  add(particles.all,{
+   x=x,
+   y=y,
+   dx=dx,
+   dy=dy,
+   max_t=max_t,
+   col=col,
+   t=0
+  })
+ end,
+ update=function()
+  local i=1
+  local p
+  while i <= #particles.all do
+   p=particles.all[i]
+   p.x+=p.dx
+   p.y+=p.dy
+   p.t+=1
+   if p.t <= p.max_t then
+    i+=1
+   else
+    deli(particles.all,i)
+   end
+  end
+ end,
+ draw=function()
+  local p
+  for i=1,#particles.all do
+   p=particles.all[i]
+   pset(p.x,p.y,p.col)
+  end
+ end
+}
+
+function as_emitter(obj)
+ local old_update=obj.update
+ 
+ local next_in=0
+ local delay=10
+ local col
+ local make_particle=function()
+  particles.make(obj.x*8+4,obj.y*8+4,0.1-rnd(0.2),-0.1-rnd(0.1),50+rnd(10),col)
+ end
+ 
+ obj.update=function()
+  if next_in > 0 then
+   next_in-= 1
+   while next_in <= 0 do
+    next_in+= delay
+    make_particle()
+   end
+  end
+  if old_update then
+   old_update()
+  end
+ end
+ 
+ obj.emit=function(new_delay,new_col)
+  delay=new_delay
+  col=new_col
+  //make_particle()
+  next_in=delay
+ end
+ 
+ obj.disable_emitter=function()
+  next_in=0
+ end
+end
+
 -->8
 mob_spd=8
 mob_max_path=4
@@ -562,12 +678,6 @@ mobs = {
   end)
  end
 }
-foreach(tiles.all,function(tile)
- if not mobs.by_coord[tile.x] then
-  mobs.by_coord[tile.x]={}
- end
- mobs.by_coord[tile.x][tile.y]=false
-end)
 
 function spawn_mob(x,y,col,skip_tween)
  local mob = {
@@ -612,6 +722,13 @@ function spawn_mob(x,y,col,skip_tween)
 end
 
 function init_mobs()
+ foreach(tiles.all,function(tile)
+  if not mobs.by_coord[tile.x] then
+   mobs.by_coord[tile.x]={}
+  end
+  mobs.by_coord[tile.x][tile.y]=false
+ end)
+ 
  for i=1,300 do
   local spawned=false
   local tile, mob, col
