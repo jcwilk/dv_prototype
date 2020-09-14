@@ -47,12 +47,30 @@ tiles.all = {}
 tiles.by_coord = {}
 tiles.update = function()
  local t
- local starti=flr(cam.y/8)*16+1
- local endi=flr((cam.y+128)/8+1)*16
- starti=mid(starti,1,#tiles.all)
- endi=mid(endi,1,#tiles.all)
+ local starti=min_visible_tile_y()*16+1
+ local endi=max_visible_tile_y()*16+16
+ endi=min(endi,#tiles.all)
  for i=starti,endi do
   tiles.all[i].update()
+ end
+end
+
+function min_visible_tile_y()
+ return max(flr(cam.y/8),0)
+end
+
+function max_visible_tile_y()
+ return min(flr((cam.y+127)/8),ceil(#tiles.all/16))
+end
+
+function opposite_color(col)
+ if col == cola1 then
+  return colb1
+ elseif col == colb1 then
+  return cola1
+ else
+  non_pri=col
+  non_primary_color()
  end
 end
 
@@ -72,9 +90,9 @@ end
 function _init()
  init_tiles()
  init_player()
+ init_mobs()
  highlight_moves()
  select_player_tile()
- init_mobs()
  cls()
 end
 
@@ -176,6 +194,9 @@ function _draw()
  //print(stat(1),0,6,6)
 end
 -->8
+player_max_path_col=5
+player_max_path=2
+
 function init_player()
  player = {
   x=0,
@@ -187,31 +208,38 @@ function init_player()
 end
 
 selected_move=nil
-selected_index=1
-function select_move(index)
+function select_move(move)
  if(selected_move) then
   tiles.by_coord[selected_move[1]][selected_move[2]].selected=false
  end
 
- while(index < 1) do
-  index += #highlighted_moves
- end
- while(index > #highlighted_moves) do
-  index -= #highlighted_moves
- end
-
- selected_index = index
- selected_move = highlighted_moves[index]
+ selected_move = move
  tiles.by_coord[selected_move[1]][selected_move[2]].selected=true
 end
 
 highlighted_moves={}
 function highlight_moves()
- local max_path=2
+ local max_path=player_max_path
  if player.col!=0 then
-  max_path=max(0,7-player.count)
+  max_path=max(0,player_max_path_col+1-player.count)
  end
- highlighted_moves=get_path_moves(player,mobs.get_all_coords(),max_path)
+
+ local obstacles
+ if player.col == 0 then
+  obstacles=mobs.get_all_coords()
+ else
+  obstacles=mobs.get_all_coords(opposite_color(player.col))
+ end
+ gobs=obstacles
+ unfiltered=get_path_moves(player,obstacles,max_path)
+ highlighted_moves={}
+ 
+ foreach(unfiltered,function(move)
+  if not mobs.by_coord[move[1]][move[2]] then
+   add(highlighted_moves,move)
+  end
+ end)
+ 
  foreach(highlighted_moves,function(move)
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = true
@@ -236,9 +264,6 @@ end
 
 function is_color_compat(x,y,entity)
  local tile = tiles.by_coord[x][y]
- globalx=x
- globaly=y
- globalentity=entity
  return(tile.col == 0 or entity.col == 0 or tile.col == entity.col)
 end
 
@@ -254,51 +279,106 @@ function get_moves()
  return moves
 end
 
-function find_left_move()
- if selected_index!=1 then
-  if highlighted_moves[selected_index-1][2] == selected_move[2] then
-   return selected_index-1
+function same_but_less(dim,move,is_less)
+ local best,curr
+ local other=3-dim //if 2 then 1 etc
+ local val=move[dim]
+ local other_val=move[other]
+ 
+ for i=1,#highlighted_moves do
+  curr=highlighted_moves[i]
+		if curr[other]==other_val then
+   if is_less then
+    if curr[dim]<val and ((not best) or best[dim]<curr[dim]) then
+     best=curr
+    end
+   else
+    if curr[dim]>val and ((not best) or best[dim]>curr[dim]) then
+     best=curr
+    end
+   end
   end
  end
- return selected_index
+ 
+ return best
+end
+
+function any_but_less(dim,move,is_less)
+ local best,curr
+ local other=3-dim //if 2 then 1 etc
+ local val=move[dim]
+ local other_val=move[other]
+ 
+ for i=1,#highlighted_moves do
+  curr=highlighted_moves[i]
+
+  if is_less then
+   if curr[dim]<val and ((not best) or (best[dim]<curr[dim] or (best[dim]==curr[dim] and abs(best[other]-other_val)>abs(curr[other]-other_val)))) then
+    best=curr
+   end
+  else
+   if curr[dim]>val and ((not best) or (best[dim]>curr[dim] or (best[dim]==curr[dim] and abs(best[other]-other_val)>abs(curr[other]-other_val)))) then
+    best=curr
+   end
+  end
+ end
+  
+ return best
+end
+
+function find_left_move()
+ local best=same_but_less(1,selected_move,true)
+ if not best then
+  best=any_but_less(1,selected_move,true)
+ end
+ if best then
+  return best
+ else
+  return selected_move
+ end
 end
 
 function find_right_move()
- if selected_index!=#highlighted_moves then
-  if highlighted_moves[selected_index+1][2] == selected_move[2] then
-   return selected_index+1
-  end
+ local best=same_but_less(1,selected_move,false)
+ if not best then
+  best=any_but_less(1,selected_move,false)
  end
- return selected_index
+ if best then
+  return best
+ else
+  return selected_move
+ end
 end
 
 function find_lower_move()
- local found=nil
- for i=selected_index,#highlighted_moves do
-  local move = highlighted_moves[i]
-  if move[2] > selected_move[2] and move[1] == selected_move[1] then
-   return i
-  end
+ local best=same_but_less(2,selected_move,false)
+ if not best then
+  best=any_but_less(2,selected_move,false)
  end
- return selected_index
+ if best then
+  return best
+ else
+  return selected_move
+ end
 end
 
 function find_higher_move()
- local found=nil
- for i=selected_index,1,-1 do
-  local move = highlighted_moves[i]
-  if move[2] < selected_move[2] and move[1] == selected_move[1] then
-   return i
-  end
+ local best=same_but_less(2,selected_move,true)
+ if not best then
+  best=any_but_less(2,selected_move,true)
  end
- return selected_index
+ if best then
+  return best
+ else
+  return selected_move
+ end
 end
 
 function select_player_tile()
  for i=1,#highlighted_moves do
   local move=highlighted_moves[i]
   if move[1] == player.x and move[2] == player.y then
-   select_move(i)
+   select_move(move)
    return
   end
  end
@@ -576,15 +656,21 @@ end
 
 -->8
 mob_spd=8
-mob_max_path=3
+mob_max_path=4
 mobs = {
  all={},
  by_coord={},
- get_all_coords=function()
+ get_all_coords=function(col)
   local coords={}
-  foreach(mobs.all,function(mob)
-   add(coords,{mob.x,mob.y})
-  end)
+  local miny=min_visible_tile_y()
+  local maxy=max_visible_tile_y()
+  local mob
+  for i=1,#mobs.all do
+   mob=mobs.all[i]
+   if (not col or mob.col == col) and mob.y >= miny and mob.y <= maxy then
+    add(coords,{mob.x,mob.y})
+   end
+  end
   return coords
  end,
  move=function()
@@ -594,7 +680,9 @@ mobs = {
   //mobs.by_coord={}
   local checking={}
   local moving={}
-  foreach(mobs.all,function(mob)
+  local mob
+  foreach(mobs.get_all_coords(),function(coord)
+   mob=mobs.by_coord[coord[1]][coord[2]]
    add(checking,mob)
    add(moving,mob)
   end)
@@ -654,8 +742,16 @@ mobs = {
    if cart_dist<=1 or cart_dist>mob_max_path then
     return
    end
+   
+   if not mob.col then
+    blah()
+   end
 
-   local moves=get_path_moves(mob,{{player.x,player.y},selected_move},mob_max_path)
+   local obstacles=mobs.get_all_coords(opposite_color(mob.col))
+   add(obstacles,{player.x,player.y})
+   add(obstacles,selected_move)
+   
+   local moves=get_path_moves(mob,obstacles,mob_max_path)
    local filtered={}
    foreach(moves,function(move)
     if not mobs.by_coord[move[1]][move[2]] then
@@ -737,7 +833,7 @@ function init_mobs()
   mobs.by_coord[tile.x][tile.y]=false
  end)
  
- for i=1,300 do
+ for i=1,200 do
   local spawned=false
   local tile, mob, col
   while not spawned do
