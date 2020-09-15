@@ -194,7 +194,7 @@ function _draw()
  //print(stat(1),0,6,6)
 end
 -->8
-player_max_path_col=5
+player_max_path_col=4
 player_max_path=2
 
 function init_player()
@@ -656,7 +656,9 @@ end
 
 -->8
 mob_spd=8
-mob_max_path=4
+mob_max_path=2
+mob_max_sight=4
+mob_amt=200
 mobs = {
  all={},
  by_coord={},
@@ -739,7 +741,7 @@ mobs = {
     return
    end
    local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
-   if cart_dist<=1 or cart_dist>mob_max_path then
+   if cart_dist<=1 or cart_dist>mob_max_sight then
     return
    end
    
@@ -833,7 +835,7 @@ function init_mobs()
   mobs.by_coord[tile.x][tile.y]=false
  end)
  
- for i=1,200 do
+ for i=1,mob_amt do
   local spawned=false
   local tile, mob, col
   while not spawned do
