@@ -103,7 +103,7 @@ function init_mouse()
  mouse={
   on=false,
   x=stat(32),
-  y=stat(33)+cam.y
+  y=stat(33)
  }
 end
 
@@ -111,7 +111,7 @@ function update_mouse()
  local oldx=mouse.x
  local oldy=mouse.y
  mouse.x=stat(32)
- mouse.y=stat(33)+cam.y
+ mouse.y=stat(33)
  local click=stat(34)%2==1
  local moved=(oldx != mouse.x or oldy != mouse.y)
 
@@ -120,7 +120,7 @@ function update_mouse()
  end
  
  local tilex=flr(mouse.x/8)
- local tiley=flr((mouse.y)/8)
+ local tiley=flr((mouse.y+cam.y)/8)
  local move
  
  for i=1,#highlighted_moves do
@@ -245,7 +245,7 @@ function _draw()
  //print(stat(32),0,0,6)
  //print(stat(34),0,6,6)
  if mouse.on then
-  spr(6,mouse.x,mouse.y)
+  spr(6,mouse.x,mouse.y+cam.y)
  end
 end
 -->8
