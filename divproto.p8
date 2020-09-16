@@ -193,10 +193,9 @@ function _draw()
  camera(cam.x,cam.y)
 
  local t
- local starti=flr(cam.y/8)*16+1
- local endi=flr((cam.y+128)/8+1)*16
- starti=mid(starti,1,#tiles.all)
- endi=mid(endi,1,#tiles.all)
+ local starti=min_visible_tile_y()*16+1
+ local endi=max_visible_tile_y()*16+16
+ endi=min(endi,#tiles.all)
  for i=starti,endi do
   t=tiles.all[i]
 
@@ -205,8 +204,10 @@ function _draw()
    pal(5,t.col)
    if t.col == cola1 then
     pal(1,cola2)
+    pal(13,14)
    else
     pal(1,colb2)
+    pal(13,7)
    end
   end
   spr(1, t.x*8, t.y*8)
@@ -228,8 +229,12 @@ function _draw()
  mobs.draw()
  pal()
 	particles.draw()
-
- foreach(tiles.all,function(t)
+	
+	starti=min_visible_tile_y()*16+1
+ endi=max_visible_tile_y()*16+16
+ endi=min(endi,#tiles.all)
+ for i=starti,endi do
+  t=tiles.all[i]
   if t.highlighted then
    pal()
    spr(4, t.x*8, t.y*8)
@@ -237,7 +242,7 @@ function _draw()
     spr(5, t.x*8, t.y*8)
    end
   end
- end)
+ end
  pal()
  //rectfill(0,0,23,11,0)
  //print(stat(7),0,0,6)
@@ -480,7 +485,7 @@ function exchange_color()
   return
  end
 
- local tile_count=tile.count 
+ local spawn_amt = tile.count
  if player.col == 0 then
   player.col = tile.col
   player.count = tile.count
@@ -500,7 +505,7 @@ function exchange_color()
  if player.col == cola1 then
   spawn_col=colb1
  end
- spawn_around(player.x,player.y,spawn_col,tile_count)
+ spawn_around(player.x,player.y,spawn_col,spawn_amt)
 end
 
 function spawn_around(x,y,col,amount)
@@ -517,22 +522,21 @@ function spawn_around(x,y,col,amount)
   del(spots,spot)
   add(shuffled,spot)
  end
- local spawn_left=min(amount,4)
- if player.col == 0 then
-  spawn_left=player.count
- end
+ //local spawn_left=min(amount,4)
+ //if player.col == 0 then
+  spawn_left=1 //player.count
+ //end
  
  local shuffled2={}
  local mob
  for i=1,#shuffled do
   spot=shuffled[i]
   mob=false
-  gspot=spot
   if is_on_map(spot[1],spot[2]) then
    mob=mobs.by_coord[spot[1]][spot[2]]
   end
   if mob and mob.col != col then
-   if spawn_mob(spot[1],spot[2],col) then
+   if spawn_mob(spot[1],spot[2],col,amount) then
     spawn_left-=1
     if spawn_left<1 then
      return
@@ -545,7 +549,7 @@ function spawn_around(x,y,col,amount)
   end
  end
  for i=1,#shuffled2 do
-  if spawn_mob(shuffled2[i][1],shuffled2[i][2],col) then
+  if spawn_mob(shuffled2[i][1],shuffled2[i][2],col,amount) then
    spawn_left-=1
    if spawn_left<1 then
     return
@@ -713,20 +717,28 @@ end
 mob_spd=8
 mob_max_path=2
 mob_max_sight=4
-mob_amt=200
+mob_amt=150
 mobs = {
  all={},
  by_coord={},
- get_all_coords=function(col)
-  local coords={}
+ get_all_visible_mobs=function(col)
+  local vis={}
   local miny=min_visible_tile_y()
   local maxy=max_visible_tile_y()
   local mob
   for i=1,#mobs.all do
    mob=mobs.all[i]
    if (not col or mob.col == col) and mob.y >= miny and mob.y <= maxy then
-    add(coords,{mob.x,mob.y})
+    add(vis,mob)
    end
+  end
+  return vis
+ end,
+ get_all_coords=function(col)
+  local vis=mobs.get_all_visible_mobs(col)
+  local coords={}
+  for i=1,#vis do
+   add(coords,{vis[i].x,vis[i].y})
   end
   return coords
  end,
@@ -738,8 +750,7 @@ mobs = {
   local checking={}
   local moving={}
   local mob
-  foreach(mobs.get_all_coords(),function(coord)
-   mob=mobs.by_coord[coord[1]][coord[2]]
+  foreach(mobs.get_all_visible_mobs(),function(mob)
    add(checking,mob)
    add(moving,mob)
   end)
@@ -795,8 +806,11 @@ mobs = {
    if player.col == mob.col then
     return
    end
+   
+   local max_path=mob_max_path+mob.count-1
+   local max_sight=mob_max_sight+mob.count-1
    local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
-   if cart_dist<=1 or cart_dist>mob_max_sight then
+   if cart_dist<=1 or cart_dist>max_sight then
     return
    end
    
@@ -808,7 +822,7 @@ mobs = {
    add(obstacles,{player.x,player.y})
    add(obstacles,selected_move)
    
-   local moves=get_path_moves(mob,obstacles,mob_max_path)
+   local moves=get_path_moves(mob,obstacles,max_path)
    local filtered={}
    foreach(moves,function(move)
     if not mobs.by_coord[move[1]][move[2]] then
@@ -826,6 +840,7 @@ mobs = {
   end)
  end,
  draw=function()
+  local mobspr
   foreach(mobs.all,function(mob)
    pal()
    if mob.col == cola1 then
@@ -835,16 +850,25 @@ mobs = {
     pal(11,colb1)
     pal(3,colb2)
    end
-   spr(3,mob.x*8,mob.y*8)
+   mobspr=3
+   if mob.count==2 then
+    mobspr=7
+   elseif mob.count==3 then
+    mobspr=8
+   elseif mob.count==4 then
+    mobspr=9
+   end
+   spr(mobspr,mob.x*8,mob.y*8)
   end)
  end
 }
 
-function spawn_mob(x,y,col,skip_tween)
+function spawn_mob(x,y,col,cnt,skip_tween)
  local mob = {
   x=player.x,
   y=player.y,
-  col=col
+  col=col,
+  count=cnt
  }
  if skip_tween then
   mob.x=x
@@ -860,10 +884,22 @@ function spawn_mob(x,y,col,skip_tween)
  end
  mob.cancel_out=function(target)
   make_tween2(mob,"x","y",target.x,target.y,mob_spd).after=function()
-			del(mobs.all,mob)
-			del(mobs.all,target)
-			mobs.by_coord[mob.x][mob.y]=false
-			mobs.by_coord[target.x][target.y]=false
+   mob_count=mob.count-target.count
+   target_count=target.count-mob.count
+			mob.count=mob_count
+			target.count=target_count
+						
+			if target.count >= 1 then
+ 			del(mobs.all,mob)
+ 			mobs.by_coord[mob.x][mob.y]=false
+ 			mobs.by_coord[target.x][target.y]=target
+ 		end
+ 		if mob.count >= 1 then
+ 			del(mobs.all,target)
+	 		mobs.by_coord[target.x][target.y]=false
+	 		mobs.by_coord[mob.x][mob.y]=mob
+	 	end
+	 	 
 			sfx(4)
   end
  end
@@ -876,6 +912,7 @@ function spawn_mob(x,y,col,skip_tween)
   elseif mobs.by_coord[x][y].col != mob.col then
    add(mobs.all,mob)
    mob.cancel_out(mobs.by_coord[x][y])
+   mobs.by_coord[x][y]=mob
    return mob
   end
  end
@@ -906,7 +943,7 @@ function init_mobs()
       col=colb1
      end
     end
-    spawn_mob(tile.x,tile.y,col,true)
+    spawn_mob(tile.x,tile.y,col,flr(rnd(4))+1,true)
    end
   end
  end
@@ -1025,13 +1062,13 @@ function call_x(cnt,fn)
  end
 end
 __gfx__
-000000005d5d5d5d0000000000000000070707770000c00060000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000015555555006666000000000077000000000cc00076000000000000000000000000000000000000000000000000000000000000000000000000000000
-007007005555555d06777760000130000000000700c00c0077600000000000000000000000000000000000000000000000000000000000000000000000000000
-0007700015555555067ff760001b130070000000cc0000c077000000000000000000000000000000000000000000000000000000000000000000000000000000
-000770005555555d067ff760001bb300000000070c0000cc60700000000000000000000000000000000000000000000000000000000000000000000000000000
-007007001555555506777760000130007000000700c00c0000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000005555555d006666000000000070000007000cc00000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000005d5d5d5d0000000000000000070707770000c00060000000000000000000000000033000000000000000000000000000000000000000000000000000
+0000000015555555006666000000000077000000000cc000760000000001300003130000001bb100000000000000000000000000000000000000000000000000
+007007005555555d06777760000130000000000700c00c0077600000001b130003b3000003bbbb30000000000000000000000000000000000000000000000000
+0007700015555555067ff760001b130070000000cc0000c077000000001b130003b3113003bbbb30000000000000000000000000000000000000000000000000
+000770005555555d067ff760001bb300000000070c0000cc60700000001bb30001b31b3001b33b10000000000000000000000000000000000000000000000000
+007007001555555506777760000130007000000700c00c0000000000001bb30001bbbb3001b11b10000000000000000000000000000000000000000000000000
+000000005555555d006666000000000070000007000cc00000000000000130000011130000100100000000000000000000000000000000000000000000000000
 0000000015151515000000000000000070707770000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
