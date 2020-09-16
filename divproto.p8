@@ -113,8 +113,9 @@ function update_mouse()
  mouse.x=stat(32)
  mouse.y=stat(33)+cam.y
  local click=stat(34)%2==1
+ local moved=(oldx != mouse.x or oldy != mouse.y)
 
- if (not click) and (not mouse.click) and (oldx != mouse.x or oldy != mouse.y) then
+ if (not click) and (not mouse.click) and moved then
   mouse.on=true
  end
  
@@ -125,7 +126,7 @@ function update_mouse()
  for i=1,#highlighted_moves do
   move=highlighted_moves[i]
   if move[1] == tilex and move[2] == tiley then
-   if move != selected_move then
+   if moved and move != selected_move then
     select_move(move)
     if mouse.on then
      sfx(2)
