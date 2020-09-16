@@ -114,7 +114,7 @@ function update_mouse()
  mouse.y=stat(33)+cam.y
  local click=stat(34)%2==1
 
- if (not click) and (oldx != mouse.x or oldy != mouse.y) then
+ if (not click) and (not mouse.click) and (oldx != mouse.x or oldy != mouse.y) then
   mouse.on=true
  end
  
@@ -140,9 +140,7 @@ function update_mouse()
   end
  end
  
- if not click then
-  mouse.click=false
- end
+ mouse.click=click
 end
 
 function _update60()
