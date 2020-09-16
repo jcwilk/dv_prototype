@@ -127,7 +127,9 @@ function update_mouse()
   if move[1] == tilex and move[2] == tiley then
    if move != selected_move then
     select_move(move)
-    sfx(2)
+    if mouse.on then
+     sfx(2)
+    end
    end
 
    if click and not mouse.click then
@@ -178,10 +180,10 @@ function _update60()
 end
 
 function press_with(fn)
- local i=fn()
- if i!=selected_index then
+ local move=fn()
+ if move!=selected_move then
   sfx(2)
-  select_move(i)
+  select_move(move)
  else
   sfx(3)
  end
