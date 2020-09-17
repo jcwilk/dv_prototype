@@ -893,11 +893,15 @@ function spawn_mob(x,y,col,cnt,skip_tween)
  			del(mobs.all,mob)
  			mobs.by_coord[mob.x][mob.y]=false
  			mobs.by_coord[target.x][target.y]=target
- 		end
- 		if mob.count >= 1 then
+ 		elseif mob.count >= 1 then
  			del(mobs.all,target)
 	 		mobs.by_coord[target.x][target.y]=false
 	 		mobs.by_coord[mob.x][mob.y]=mob
+	 	else
+	 	 del(mobs.all,target)
+ 			del(mobs.all,mob)
+	 		mobs.by_coord[target.x][target.y]=false
+	 		mobs.by_coord[mob.x][mob.y]=false
 	 	end
 	 	 
 			sfx(4)
