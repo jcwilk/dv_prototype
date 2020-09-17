@@ -156,9 +156,18 @@ function _update60()
   cam.y=player.y*8 - 60
  end
  
+ if dead and (btnp(4) or mouse.click) then
+  extcmd "reset"
+ end
+ 
  if #anims.all>0 then
   anims.tick()
   return
+ end
+ 
+ if dead or check_dead(player.x,player.y) then
+  dead=true
+  mobs.move()
  end
  
  if(btnp(4)) then
@@ -176,6 +185,10 @@ function _update60()
  if(btnp(3)) then
   press_with(find_lower_move)
  end
+end
+
+function check_dead()
+ return (player.col == 0 and #highlighted_moves == 0)
 end
 
 function press_with(fn)
@@ -249,6 +262,14 @@ function _draw()
  //print(stat(1),0,6,6)
  //print(stat(32),0,0,6)
  //print(stat(34),0,6,6)
+ //dead=true
+ if dead then
+  rectfill(27,55,101,70,0)
+  rect(27,55,101,70,1)
+  print("dead",56,57,8)
+  print("click to try again",29,64,7)
+ end
+ 
  if mouse.on then
   spr(6,mouse.x,mouse.y+cam.y)
  end
@@ -304,6 +325,10 @@ function highlight_moves()
   local tile = tiles.by_coord[move[1]][move[2]]
   tile.highlighted = true
  end)
+ 
+ if #highlighted_moves == 1 and player.col==0 then
+  highlighted_moves={}
+ end
 end
 
 function dehighlight_moves()
@@ -458,7 +483,9 @@ function choose_move()
    anims.after(function()
     //dupt
 		  highlight_moves()
-		  select_player_tile()
+		  if #highlighted_moves>0 then
+ 		  select_player_tile()
+ 		 end
 		 end)
 		end)
  end
