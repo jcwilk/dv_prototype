@@ -527,7 +527,10 @@ function spawn_around(x,y,col,amount)
   spawn_left=1 //player.count
  //end
  
- local shuffled2={}
+ 
+ 
+ local ops_nearby={}
+ local non_mobs={}
  local mob
  for i=1,#shuffled do
   spot=shuffled[i]
@@ -536,20 +539,29 @@ function spawn_around(x,y,col,amount)
    mob=mobs.by_coord[spot[1]][spot[2]]
   end
   if mob and mob.col != col then
-   if spawn_mob(spot[1],spot[2],col,amount) then
-    spawn_left-=1
-    if spawn_left<1 then
-     return
-    end
-   else
-    add(shuffled2,spot)
-   end
+   add(ops_nearby,{mob,spot})
   else
-   add(shuffled2,spot)
+   add(non_mobs,spot)
   end
  end
- for i=1,#shuffled2 do
-  if spawn_mob(shuffled2[i][1],shuffled2[i][2],col,amount) then
+ gmobs=mobs_nearby
+ sort(ops_nearby,function(a,b)
+  return a[1].count < b[1].count
+ end)
+ 
+ for i=1,#ops_nearby do
+  mob=ops_nearby[i][1]
+  spot=ops_nearby[i][2]
+  if spawn_mob(spot[1],spot[2],col,amount) then
+   spawn_left-=1
+   if spawn_left<1 then
+    return
+   end
+  end
+ end
+ 
+ for i=1,#non_mobs do
+  if spawn_mob(non_mobs[i][1],non_mobs[i][2],col,amount) then
    spawn_left-=1
    if spawn_left<1 then
     return
