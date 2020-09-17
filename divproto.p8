@@ -280,8 +280,8 @@ player_max_path=2
 
 function init_player()
  player = {
-  x=0,
-  y=0,
+  x=2,
+  y=2,
   col=0
  }
  as_emitter(player)
