@@ -238,12 +238,12 @@ function _draw()
   pal(15,6)
  end
  spr(2, player.x*8, player.y*8)
-	pal()
+ pal()
  mobs.draw()
  pal()
-	particles.draw()
-	
-	starti=min_visible_tile_y()*16+1
+ particles.draw()
+ 
+ starti=min_visible_tile_y()*16+1
  endi=max_visible_tile_y()*16+16
  endi=min(endi,#tiles.all)
  for i=starti,endi do
@@ -372,7 +372,7 @@ function same_but_less(dim,move,is_less)
  
  for i=1,#highlighted_moves do
   curr=highlighted_moves[i]
-		if curr[other]==other_val then
+  if curr[other]==other_val then
    if is_less then
     if curr[dim]<val and ((not best) or best[dim]<curr[dim]) then
      best=curr
@@ -479,15 +479,15 @@ function choose_move()
    exchange_color()
   end
   anims.after(function()
-			mobs.move()
+   mobs.move()
    anims.after(function()
     //dupt
-		  highlight_moves()
-		  if #highlighted_moves>0 then
- 		  select_player_tile()
- 		 end
-		 end)
-		end)
+    highlight_moves()
+    if #highlighted_moves>0 then
+     select_player_tile()
+    end
+   end)
+  end)
  end
 end
 -->8
@@ -640,10 +640,10 @@ function get_path_moves(entity,obstacles,max_path)
 
    add(moves, {x,y,steps})
 
-			// if they just stepped onto a color edge then don't go further
-			if player.col == 0 and tiles.by_coord[x][y].col != 0 then
-			 return
-			end
+   // if they just stepped onto a color edge then don't go further
+   if player.col == 0 and tiles.by_coord[x][y].col != 0 then
+    return
+   end
 
    local next_steps = {}
    foreach(steps,function(s)
@@ -809,15 +809,15 @@ mobs = {
      check=checking[i]
      found=false
      if check.col != mob.col then
-	     if check.x == mob.x then
-	      if check.y == mob.y-1 or check.y == mob.y+1 then
-	       found=true
-	      end
-	     elseif check.y == mob.y then
-	      if check.x == mob.x-1 or check.x == mob.x+1 then
-	       found=true
-	      end
-	     end
+      if check.x == mob.x then
+       if check.y == mob.y-1 or check.y == mob.y+1 then
+        found=true
+       end
+      elseif check.y == mob.y then
+       if check.x == mob.x-1 or check.x == mob.x+1 then
+        found=true
+       end
+      end
      end
      local a,b
      if found then
@@ -928,25 +928,25 @@ function spawn_mob(x,y,col,cnt,skip_tween)
   make_tween2(mob,"x","y",target.x,target.y,mob_spd).after=function()
    mob_count=mob.count-target.count
    target_count=target.count-mob.count
-			mob.count=mob_count
-			target.count=target_count
-						
-			if target.count >= 1 then
- 			del(mobs.all,mob)
- 			mobs.by_coord[mob.x][mob.y]=false
- 			mobs.by_coord[target.x][target.y]=target
- 		elseif mob.count >= 1 then
- 			del(mobs.all,target)
-	 		mobs.by_coord[target.x][target.y]=false
-	 		mobs.by_coord[mob.x][mob.y]=mob
-	 	else
-	 	 del(mobs.all,target)
- 			del(mobs.all,mob)
-	 		mobs.by_coord[target.x][target.y]=false
-	 		mobs.by_coord[mob.x][mob.y]=false
-	 	end
-	 	 
-			sfx(4)
+   mob.count=mob_count
+   target.count=target_count
+      
+   if target.count >= 1 then
+    del(mobs.all,mob)
+    mobs.by_coord[mob.x][mob.y]=false
+    mobs.by_coord[target.x][target.y]=target
+   elseif mob.count >= 1 then
+    del(mobs.all,target)
+    mobs.by_coord[target.x][target.y]=false
+    mobs.by_coord[mob.x][mob.y]=mob
+   else
+    del(mobs.all,target)
+    del(mobs.all,mob)
+    mobs.by_coord[target.x][target.y]=false
+    mobs.by_coord[mob.x][mob.y]=false
+   end
+    
+   sfx(4)
   end
  end
  if is_valid_move(x,y,mob) then
@@ -1092,7 +1092,7 @@ function make_path_tween(obj,move,t_each)
      tw.after=cb
      sfx(5)
     end
-  	end)(moves[i])
+   end)(moves[i])
   end
   next_cb()
   return cb_container
