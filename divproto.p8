@@ -500,15 +500,16 @@ function exchange_color()
 
  if tile.col == 0 then
   sfx(1)
-  tile.col = player.col
-  tile.count = player.count
-  if tile.count > 1 then
-   tile.emit(20/tile.count,tile.col)
-  end
-  player.col = 0
-  player.disable_emitter()
-  spawn_around(player.x,player.y,tile.col,tile.count)
-  player.count=1
+  
+  spawn_around(player.x,player.y,player.col,1)
+  
+  player.count-= 1
+  if player.count < 1 then
+   player.count = 1
+   player.col = 0
+   player.disable_emitter()
+ 	end
+ 	
   return
  end
 
@@ -573,7 +574,7 @@ function spawn_around(x,y,col,amount)
  end
  gmobs=mobs_nearby
  sort(ops_nearby,function(a,b)
-  return a[1].count < b[1].count
+  return a[1].count > b[1].count
  end)
  
  for i=1,#ops_nearby do
