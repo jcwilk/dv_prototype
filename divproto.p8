@@ -617,9 +617,9 @@ function get_path_moves(entity,obstacles,max_path)
    return
   end
 
-  local add_it=true
+
   if seen[x][y] then
-   //add_it=false
+   // can only get in here if this path is shorter than the last one
    local i=1
    while i<#moves do
     if moves[i][1]==x and moves[i][2]==y then
@@ -638,9 +638,12 @@ function get_path_moves(entity,obstacles,max_path)
     end
    end
 
-   if add_it then
-    add(moves, {x,y,steps})
-   end
+   add(moves, {x,y,steps})
+
+			// if they just stepped onto a color edge then don't go further
+			if player.col == 0 and tiles.by_coord[x][y].col != 0 then
+			 return
+			end
 
    local next_steps = {}
    foreach(steps,function(s)
