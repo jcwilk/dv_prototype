@@ -919,7 +919,7 @@ mobs = {
 			// nothing to chase, do nothing
 			// todo - wander?
 			if #targets == 0 then
-			 return
+			 //return
 			end
 			
 			printh("doing pathfinding")
