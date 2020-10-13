@@ -85,6 +85,7 @@ function init_tiles()
    add(tiles.all, tile)
   end
  end
+ tiles.by_coord[init_player_x][init_player_y].col = 0
 end
 
 function _init()
@@ -277,11 +278,13 @@ end
 -->8
 player_max_path_col=4
 player_max_path=2
+init_player_x=2
+init_player_y=2
 
 function init_player()
  player = {
-  x=2,
-  y=2,
+  x=init_player_x,
+  y=init_player_y,
   col=0
  }
  as_emitter(player)
@@ -642,7 +645,7 @@ function get_path_moves(entity,obstacles,max_path)
    add(moves, {x,y,steps})
 
    // if they just stepped onto a color edge then don't go further
-   if player.col == 0 and tiles.by_coord[x][y].col != 0 then
+   if entity.col == 0 and tiles.by_coord[x][y].col != 0 then
     return
    end
 
@@ -786,81 +789,142 @@ mobs = {
   return coords
  end,
  move=function()
-  //local mobsall=mobs.all
-  //local mobsby_coord=mobs.by_coord
-  //mobs.all={}
-  //mobs.by_coord={}
-  local checking={}
   local moving={}
   local mob
-  foreach(mobs.get_all_visible_mobs(),function(mob)
-   add(checking,mob)
-   add(moving,mob)
+  local all_visible=mobs.get_all_visible_mobs()
+    
+  local enemy_map={}
+  enemy_map[cola1]={}
+  enemy_map[colb1]={}
+  foreach(all_visible,function(mob)
+   if mob.col == cola1 then
+    add(enemy_map[colb1], mob)
+   elseif mob.col == colb1 then
+    add(enemy_map[cola1], mob)
+			else
+			 error_invalid_color()
+			end
   end)
-  local mob,fn
-  while #checking>0 do
-   mob=deli(checking,1)
-
-   fn=function(mob)
-    local check
-    local anim
-    local found
-
-    for i=1,#checking do
-     check=checking[i]
-     found=false
-     if check.col != mob.col then
-      if check.x == mob.x then
-       if check.y == mob.y-1 or check.y == mob.y+1 then
-        found=true
-       end
-      elseif check.y == mob.y then
-       if check.x == mob.x-1 or check.x == mob.x+1 then
-        found=true
-       end
-      end
-     end
-     local a,b
-     if found then
-      found=false
-      if tiles.by_coord[mob.x][mob.y].col == 0 then
-       found=true
-       a=check
-       b=mob
-      elseif tiles.by_coord[check.x][check.y].col == 0 then
-       found=true
-       a=mob
-       b=check
-      end
-     end
-     if found then
-      mob.cancel_out(check)
-      
-      deli(checking,i)
-      del(moving,check)
-      del(moving,mob)
-      return
-     end
-    end
-   end
-   //fn(mob)
-  end
-  foreach(moving,function(mob)
-   if player.col == mob.col then
-    return
+  
+  foreach(all_visible,function(mob)
+   if not mob.col then
+    error_mob_missing_color()
    end
    
    local max_path=mob_max_path+mob.count-1
    local max_sight=mob_max_sight+mob.count-1
-   local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
-   if cart_dist<=1 or cart_dist>max_sight then
-    return
+   
+   local nearby_enemies={}
+   local enemy_dist
+   local next_to_enemy=false
+   local enemies=enemy_map[mob.col]
+   local e=0
+   local enemy
+   
+   while e<#enemies and not next_to_enemy do
+    e+=1
+    enemy=enemies[e]
+    enemy_dist=abs(enemy.x-mob.x)+abs(enemy.y-mob.y)
+   
+    if enemy.count > mob.count then
+     if enemy_dist <= 1 then
+      next_to_enemy=true
+     end
+     if enemy_dist <= max_sight then
+      add(nearby_enemies,enemy)
+     end
+    end
    end
    
-   if not mob.col then
-    blah()
+   printh(mob.col.."mobx"..mob.count.."@"..mob.x..","..mob.y)
+   printh("collected "..#nearby_enemies.." nearby enemies")
+   
+   local nearby_friends={}
+   local next_to_friend=false
+   
+   if #nearby_enemies == 0 then
+    local friend_dist
+	   local friends=enemy_map[opposite_color(mob.col)]
+	   local f=0
+	   local friend
+	   while f<#friends and not next_to_friend do
+	    f+=1
+	    friend=friends[f]
+	    if friend != mob then
+		    friend_dist=abs(friend.x-mob.x)+abs(friend.y-mob.y)
+		    if friend.count > mob.count then
+		     if friend_dist <= 1 then
+		      next_to_friend=true
+		     end
+		     if friend_dist <= max_sight then
+		      add(nearby_friends,friend)
+		     end
+		    end
+		   end
+	   end
+	   
+	   printh("collected "..#nearby_friends.." nearby friends")
    end
+   
+   local cart_dist=abs(mob.x-player.x)+abs(mob.y-player.y)
 
+			local targets = {}
+			
+			// order of priorities:
+			// enemy/gray player
+			// bigger enemy
+			// bigger friend player
+			// bigger friend
+
+			// enemy/gray player
+			if mob.col != player.col and cart_dist <= max_sight then
+			 if cart_dist <= 1 then
+			  return
+			 else
+			  printh("targeting player as enemy")
+			  add(targets,player)
+			 end
+			end
+
+			// bigger enemy
+			if #targets == 0 and #nearby_enemies > 0 then
+			 if next_to_enemy then
+			  return
+			 else
+			  printh("targetting enemies")
+			  targets = nearby_enemies
+			 end
+			end
+			
+			// bigger friend player
+			if #targets == 0 and mob.col == player.col and mob.count < player.count and cart_dist <= max_sight then
+			 if cart_dist <= 1 then
+			  return
+			 else
+			  printh("targetting player as friend")
+			  add(targets,player)
+			 end
+			end
+			
+			// bigger friend
+			if #targets == 0 and #nearby_friends != 0 then
+			 if next_to_friend then
+			  return
+			 else
+			  printh("targetting friends")
+			  targets = nearby_friends
+			 end
+			end
+			
+			// nothing to chase, do nothing
+			// todo - wander?
+			if #targets == 0 then
+			 return
+			end
+			
+			printh("doing pathfinding")
+
+			// todo - optimize this to reuse enemy stuff
    local obstacles=mobs.get_all_coords(opposite_color(mob.col))
    add(obstacles,{player.x,player.y})
    add(obstacles,selected_move)
@@ -872,13 +936,36 @@ mobs = {
      add(filtered,move)
     end
    end)
+   
+   printh("filtered "..#filtered.." moves")
+   
+   sortables={}
+   local min_d,move
+   for i=1,#filtered do
+    move=filtered[i]
+    min_d = 100
+    for j=1,#targets do
+     min_d = min(min_d,abs(move[1]-targets[j].x)+abs(move[2]-targets[j].y))
+    end
+    add(sortables,{
+     move=filtered[i],
+     min_d=min_d
+    })
+   end
+   
+   printh("sorted "..#sortables.." moves")
 
-   sort(filtered,function(a,b)
-    return (abs(a[1]-player.x)+abs(a[2]-player.y) > abs(b[1]-player.x)+abs(b[2]-player.y))
+			local min_d
+   sort(sortables,function(a,b)
+    if a.min_d == b.min_d then
+     return #a.move[3] > #b.move[3]
+    else
+     return a.min_d > b.min_d
+    end
    end)
 
-   if #filtered > 0 then
-    mob.move_to(filtered[1])
+   if #sortables > 0 then
+    mob.move_to(sortables[1].move)
    end
   end)
  end,
@@ -973,6 +1060,9 @@ function init_mobs()
   end
   mobs.by_coord[tile.x][tile.y]=false
  end)
+ 
+ // spawn_mob(8,5,cola1,2,true)
+ // spawn_mob(9,5,cola1,1,true)
  
  for i=1,mob_amt do
   local spawned=false
