@@ -265,10 +265,10 @@ function _draw()
  //print(stat(34),0,6,6)
  //dead=true
  if dead then
-  rectfill(27,55,101,70,0)
-  rect(27,55,101,70,1)
-  print("dead",56,57,8)
-  print("click to try again",29,64,7)
+  rectfill(27,55+cam.y,101,70+cam.y,0)
+  rect(27,55+cam.y,101,70+cam.y,1)
+  print("dead",56,57+cam.y,8)
+  print("click to try again",29,64+cam.y,7)
  end
  
  if mouse.on then
