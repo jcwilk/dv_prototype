@@ -285,7 +285,8 @@ function init_player()
  player = {
   x=init_player_x,
   y=init_player_y,
-  col=0
+  col=0,
+  is_player=true
  }
  as_emitter(player)
  //player.emit(10,player.col)
@@ -796,6 +797,14 @@ mobs = {
   local enemy_map={}
   enemy_map[cola1]={}
   enemy_map[colb1]={}
+  
+  if player.col != cola1 then
+   add(enemy_map[cola1], player)
+  end
+  if player.col != colb1 then
+   add(enemy_map[colb1], player)
+  end
+   
   foreach(all_visible,function(mob)
    if mob.col == cola1 then
     add(enemy_map[colb1], mob)
@@ -826,7 +835,7 @@ mobs = {
     enemy=enemies[e]
     enemy_dist=abs(enemy.x-mob.x)+abs(enemy.y-mob.y)
    
-    if enemy.count > mob.count then
+    if enemy.is_player or enemy.count > mob.count then
      if enemy_dist <= 1 then
       next_to_enemy=true
      end
@@ -871,38 +880,19 @@ mobs = {
 			local targets = {}
 			
 			// order of priorities:
-			// enemy/gray player
+			// x enemy/gray player
 			// bigger enemy
-			// bigger friend player
+			// x bigger friend player
 			// bigger friend
 
-			// enemy/gray player
-			if mob.col != player.col and cart_dist <= max_sight then
-			 if cart_dist <= 1 then
-			  return
-			 else
-			  printh("targeting player as enemy")
-			  add(targets,player)
-			 end
-			end
 
-			// bigger enemy
+			// bigger enemy or enemy/gray player
 			if #targets == 0 and #nearby_enemies > 0 then
 			 if next_to_enemy then
 			  return
 			 else
 			  printh("targetting enemies")
 			  targets = nearby_enemies
-			 end
-			end
-			
-			// bigger friend player
-			if #targets == 0 and mob.col == player.col and mob.count < player.count and cart_dist <= max_sight then
-			 if cart_dist <= 1 then
-			  return
-			 else
-			  printh("targetting player as friend")
-			  add(targets,player)
 			 end
 			end
 			
@@ -916,9 +906,9 @@ mobs = {
 			 end
 			end
 			
-			// nothing to chase, do nothing
-			// todo - wander?
+			// nothing to chase
 			if #targets == 0 then
+			 // uncomment to disable wandering
 			 //return
 			end
 			
