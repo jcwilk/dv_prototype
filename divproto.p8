@@ -244,19 +244,16 @@ function _draw()
  pal()
  particles.draw()
  
- starti=min_visible_tile_y()*16+1
- endi=max_visible_tile_y()*16+16
- endi=min(endi,#tiles.all)
- for i=starti,endi do
-  t=tiles.all[i]
-  if t.highlighted then
-   pal()
-   spr(4, t.x*8, t.y*8)
-   if t.selected then
-    spr(5, t.x*8, t.y*8)
-   end
-  end
+ if(selected_move) then
+	 foreach(highlighted_moves,function(move)
+	  pal()
+	  spr(4, move[1]*8, move[2]*8)
+	 end)
+	 
+  pal()
+  spr(5, selected_move[1]*8, selected_move[2]*8)
  end
+ 
  pal()
  //rectfill(0,0,23,11,0)
  //print(stat(7),0,0,6)
@@ -286,6 +283,7 @@ function init_player()
   x=init_player_x,
   y=init_player_y,
   col=0,
+  count=0,
   is_player=true
  }
  as_emitter(player)
@@ -294,12 +292,7 @@ end
 
 selected_move=nil
 function select_move(move)
- if(selected_move) then
-  tiles.by_coord[selected_move[1]][selected_move[2]].selected=false
- end
-
  selected_move = move
- tiles.by_coord[selected_move[1]][selected_move[2]].selected=true
 end
 
 highlighted_moves={}
@@ -325,21 +318,9 @@ function highlight_moves()
   end
  end)
  
- foreach(highlighted_moves,function(move)
-  local tile = tiles.by_coord[move[1]][move[2]]
-  tile.highlighted = true
- end)
- 
  if #highlighted_moves == 1 and player.col==0 then
   highlighted_moves={}
  end
-end
-
-function dehighlight_moves()
- foreach(highlighted_moves,function(move)
-  local tile = tiles.by_coord[move[1]][move[2]]
-  tile.highlighted = false
- end)
 end
 
 function is_valid_move(x,y,entity)
@@ -475,7 +456,7 @@ function select_player_tile()
 end
 
 function choose_move()
- dehighlight_moves()
+ 
  local exchange = player.col != 0 or selected_move[1] != player.x or selected_move[2] != player.y
  
  make_path_tween(player,selected_move,6).after=function()
@@ -493,6 +474,8 @@ function choose_move()
    end)
   end)
  end
+ 
+ selected_move=nil
 end
 -->8
 function exchange_color()
