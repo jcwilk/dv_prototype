@@ -1062,7 +1062,7 @@ function spawn_mob(x,y,col,cnt,skip_tween)
    sfx(4)
   end
  end
- if is_valid_move(x,y,mob) then
+ if is_valid_move(x,y,mob.col) then
   if not mobs.by_coord[x][y] then
    add(mobs.all,mob)
    mobs.by_coord[x][y]=mob
