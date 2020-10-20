@@ -108,48 +108,10 @@ function init_mouse()
  }
 end
 
-function update_mouse()
- local oldx=mouse.x
- local oldy=mouse.y
- mouse.x=stat(32)
- mouse.y=stat(33)
- local click=stat(34)%2==1
- local moved=(oldx != mouse.x or oldy != mouse.y)
-
- if (not click) and (not mouse.click) and moved then
-  mouse.on=true
- end
- 
- local tilex=flr(mouse.x/8)
- local tiley=flr((mouse.y+cam.y)/8)
- local move
- 
- for i=1,#highlighted_moves do
-  move=highlighted_moves[i]
-  if move[1] == tilex and move[2] == tiley then
-   if moved and move != selected_move then
-    select_move(move)
-    if mouse.on then
-     sfx(2)
-    end
-   end
-
-   if click and not mouse.click then
-    mouse.click=true
-    choose_move()
-    //mouse.on=false
-   end
-  end
- end
- 
- mouse.click=click
-end
-
 function _update60()
  tiles.update()
  player.update()
  particles.update()
- update_mouse()
  
  if player.y*8 < 60 then
   cam.y=0
@@ -173,6 +135,8 @@ function _update60()
  
  if(btnp(4)) then
   choose_move()
+ elseif(btnp(5)) then
+  rotate_attack()
  end
  if(btnp(0)) then
   press_with(find_left_move)
@@ -252,6 +216,25 @@ function _draw()
 	 
   pal()
   spr(5, selected_move[1]*8, selected_move[2]*8)
+  
+  local atkflp,attack
+  
+  //for i=1,#attacks do
+  if attack_index then
+   attack=attacks[attack_index]
+   if attack then
+    atkflp=attack_flip[attack_index]
+    pal()
+    if attack[3] == cola1 then
+     pal(11,cola1)
+     pal(3,cola2)
+    else
+     pal(11,colb1)
+     pal(3,colb2)
+    end
+    spr(atkflp[1], attack[1]*8, attack[2]*8, 1, 1, atkflp[2], atkflp[2])
+   end
+  end
  end
  
  pal()
@@ -291,8 +274,22 @@ function init_player()
 end
 
 selected_move=nil
+attacks={}
 function select_move(move)
  selected_move = move
+ sorted_attacks = sorted_attacks_for_tile(move[1],move[2])
+ attacks={false,false,false,false}
+ foreach(sorted_attacks,function(atk)
+  attacks[atk[4]] = atk
+ end)
+ attack_index = false
+ if #sorted_attacks > 0 then
+  if selected_attack_index and attacks[selected_attack_index] then
+   attack_index = selected_attack_index
+  else
+   attack_index = sorted_attacks[1][4]
+  end
+ end
 end
 
 highlighted_moves={}
@@ -313,8 +310,10 @@ function highlight_moves()
  highlighted_moves={}
  
  foreach(unfiltered,function(move)
-  if not mobs.by_coord[move[1]][move[2]] then
-   add(highlighted_moves,move)
+  if player.col == 0 or any_attacks_at(move[1],move[2]) then
+   if not mobs.by_coord[move[1]][move[2]] then
+    add(highlighted_moves,move)
+   end
   end
  end)
  
@@ -323,8 +322,8 @@ function highlight_moves()
  end
 end
 
-function is_valid_move(x,y,entity)
- return (is_on_map(x,y) and is_color_compat(x,y,entity))
+function is_valid_move(x,y,col)
+ return (is_on_map(x,y) and is_color_compat(x,y,col))
 end
 
 function is_on_map(x,y)
@@ -332,16 +331,16 @@ function is_on_map(x,y)
  return (x >= 0 and x <= 15 and y >= 0 and y <= 150)
 end
 
-function is_color_compat(x,y,entity)
+function is_color_compat(x,y,col)
  local tile = tiles.by_coord[x][y]
- return(tile.col == 0 or entity.col == 0 or tile.col == entity.col)
+ return(tile.col == 0 or col == 0 or tile.col == col)
 end
 
 function get_moves()
  local moves = {}
  for y=player.y-3,player.y+3 do
   for x=player.x-3,player.x+3 do
-   if is_valid_move(x,y,player) then
+   if is_valid_move(x,y,player.col) then
     add(moves,{x,y})
    end
   end
@@ -456,7 +455,6 @@ function select_player_tile()
 end
 
 function choose_move()
- 
  local exchange = player.col != 0 or selected_move[1] != player.x or selected_move[2] != player.y
  
  make_path_tween(player,selected_move,6).after=function()
@@ -476,8 +474,114 @@ function choose_move()
  end
  
  selected_move=nil
+ selected_attack_index=nil
+end
+
+function rotate_attack()
+ if not attack_index then
+  return
+ end
+ 
+ attack_index+=1
+ if attack_index > 4 then
+  attack_index = 1
+ end
+ 
+ while not attacks[attack_index] do
+  attack_index+=1
+  if attack_index > 4 then
+   attack_index = 1
+  end
+ end
+ selected_attack_index = attack_index
 end
 -->8
+local attack_dirs = {
+ {0,-1}, //north
+ {1,0}, //east
+ {0,1}, //south
+ {-1,0} //west
+}
+
+attack_flip = {
+ {11,false},
+ {10,false},
+ {11,true},
+ {10,true}
+}
+
+function attacks_for_tile(tile_x,tile_y)
+ local source_tile=tiles.by_coord[tile_x][tile_y]
+ local ret={false,false,false,false}
+ local shoot_col
+ 
+ if player.col == 0 then
+  if source_tile.col != 0 then
+   // shooting opposite color
+   shoot_col=opposite_color(source_tile.col)
+  else
+   // shooting nothing
+  end
+ elseif player.col == source_tile.col then
+  // shooting opposite color
+  shoot_col=opposite_color(player.col)
+ elseif source_tile.col == 0 then
+  // shooting player.col
+  shoot_col=player.col
+ else
+  // opposite colors, can't move here
+ end
+ 
+ if not shoot_col then
+  return ret
+ end
+
+ local x,y,mob
+ for i=1,4 do
+  x=tile_x+attack_dirs[i][1]
+  y=tile_y+attack_dirs[i][2]
+  if is_valid_move(x,y,shoot_col) then
+   mob = mobs.by_coord[x][y]
+   if (not mob) or mob.col != shoot_col then
+	   ret[i]={x,y,shoot_col,i}
+	  end
+  end
+ end
+ 
+ return ret
+end
+
+function sorted_attacks_for_tile(tile_x,tile_y)
+ local raw = attacks_for_tile(tile_x,tile_y)
+
+	local sorted={}
+ for i=1,4 do
+  if raw[i] then
+   add(sorted,raw[i])
+  end
+ end
+ 
+ local moba,mobb
+ sort(sorted,function(a,b)
+  moba=mobs.by_coord[a[1]][a[2]]
+  mobb=mobs.by_coord[b[1]][b[2]]
+  
+  if (not moba) and (not mobb) then
+   return false
+  end
+  if moba and mobb then
+   return moba.count > mobb.count
+  end
+  return not moba
+ end)
+ 
+ return sorted
+end
+
+function any_attacks_at(x,y)
+ return (#sorted_attacks_for_tile(x,y) > 0)
+end
+
 function exchange_color()
  local tile = tiles.by_coord[player.x][player.y]
 
@@ -524,65 +628,13 @@ function exchange_color()
 end
 
 function spawn_around(x,y,col,amount)
- local spots = {
-  {x-1,y},
-  {x+1,y},
-  {x,y-1},
-  {x,y+1}
- }
- local shuffled = {}
- local spot
- while #spots > 0 do
-  spot = rnd(spots)
-  del(spots,spot)
-  add(shuffled,spot)
- end
- //local spawn_left=min(amount,4)
- //if player.col == 0 then
-  spawn_left=1 //player.count
- //end
- 
- 
- 
- local ops_nearby={}
- local non_mobs={}
- local mob
- for i=1,#shuffled do
-  spot=shuffled[i]
-  mob=false
-  if is_on_map(spot[1],spot[2]) then
-   mob=mobs.by_coord[spot[1]][spot[2]]
-  end
-  if mob and mob.col != col then
-   add(ops_nearby,{mob,spot})
-  else
-   add(non_mobs,spot)
-  end
- end
- gmobs=mobs_nearby
- sort(ops_nearby,function(a,b)
-  return a[1].count > b[1].count
- end)
- 
- for i=1,#ops_nearby do
-  mob=ops_nearby[i][1]
-  spot=ops_nearby[i][2]
-  if spawn_mob(spot[1],spot[2],col,amount) then
-   spawn_left-=1
-   if spawn_left<1 then
-    return
-   end
-  end
+ if not attack_index then
+  return
  end
  
- for i=1,#non_mobs do
-  if spawn_mob(non_mobs[i][1],non_mobs[i][2],col,amount) then
-   spawn_left-=1
-   if spawn_left<1 then
-    return
-   end
-  end
- end
+ local attack = attacks[attack_index]
+ 
+	spawn_mob(attack[1],attack[2],col,amount)
 end
 -->8
 function get_path_moves(entity,obstacles,max_path)
@@ -619,7 +671,7 @@ function get_path_moves(entity,obstacles,max_path)
   end
   seen[x][y] = step
 
-  if is_valid_move(x,y,entity) then
+  if is_valid_move(x,y,entity.col) then
    for i=1,#obstacles do
     if x==obstacles[i][1] and y==obstacles[i][2] then
      return
@@ -1174,12 +1226,12 @@ end
 __gfx__
 000000005d5d5d5d0000000000000000070707770000c00060000000000000000000000000033000000000000000000000000000000000000000000000000000
 0000000015555555006666000000000077000000000cc000760000000001300003130000001bb100000000000000000000000000000000000000000000000000
-007007005555555d06777760000130000000000700c00c0077600000001b130003b3000003bbbb30000000000000000000000000000000000000000000000000
-0007700015555555067ff760001b130070000000cc0000c077000000001b130003b3113003bbbb30000000000000000000000000000000000000000000000000
-000770005555555d067ff760001bb300000000070c0000cc60700000001bb30001b31b3001b33b10000000000000000000000000000000000000000000000000
-007007001555555506777760000130007000000700c00c0000000000001bb30001bbbb3001b11b10000000000000000000000000000000000000000000000000
-000000005555555d006666000000000070000007000cc00000000000000130000011130000100100000000000000000000000000000000000000000000000000
-0000000015151515000000000000000070707770000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+007007005555555d06777760000130000000000700c00c0077600000001b130003b3000003bbbb30003000000000000000000000000000000000000000000000
+0007700015555555067ff760001b130070000000cc0000c077000000001b130003b3113003bbbb3000b300000000100000000000000000000000000000000000
+000770005555555d067ff760001bb300000000070c0000cc60700000001bb30001b31b3001b33b1033bb10000003b10000000000000000000000000000000000
+007007001555555506777760000130007000000700c00c0000000000001bb30001bbbb3001b11b1000b10000003bbb1000000000000000000000000000000000
+000000005555555d006666000000000070000007000cc00000000000000130000011130000100100001000000000300000000000000000000000000000000000
+0000000015151515000000000000000070707770000c000000000000000000000000000000000000000000000000300000000000000000000000000000000000
 __label__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
