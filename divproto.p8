@@ -101,11 +101,16 @@ function _update60()
  tiles.update()
  player.update()
  particles.update()
- 
- if player.y*8 < 60 then
-  cam.y=0
- else
-  cam.y=player.y*8 - 60
+
+ if player.y*8 < 48 then
+  // too close to the top
+  cam.y=48-56
+ elseif cam.y < player.y*8-64 then
+  // player is below camera center
+  cam.y=player.y*8-64
+ elseif cam.y > player.y*8-56 then
+  // player is above camera center
+  cam.y=player.y*8-56
  end
  
  if dead and btnp(4) then
@@ -155,8 +160,10 @@ function press_with(fn)
  end
 end
 
-cam={x=0,y=0}
+cam={x=0,y=8}
 function _draw()
+ cls()
+
  camera(cam.x,cam.y)
 
  local t
@@ -249,6 +256,32 @@ function _draw()
   print("dead",56,57+cam.y,8)
   print("click to try again",29,64+cam.y,7)
  end
+
+ pal()
+ 
+ if player.col==0 then
+  rectfill(86,cam.y,127,cam.y+6,5)
+	 rectfill(87,cam.y,127,cam.y+5,7)
+	 print("vulnerable",88,cam.y,6)
+	elseif player.col==cola1 then
+	 rectfill(126-player.count*5,cam.y,127,cam.y+6,cola2)
+	 rectfill(127-player.count*5,cam.y,127,cam.y+5,cola1)
+	 pal(11,cola1)
+	 pal(3,cola2)
+	 for i=1,player.count do
+	  spr(3,126-i*5,cam.y-1)
+	 end
+	elseif player.col==colb1 then
+	 rectfill(126-player.count*5,cam.y,127,cam.y+6,colb2)
+	 rectfill(127-player.count*5,cam.y,127,cam.y+5,colb1)
+	 pal(11,colb1)
+	 pal(3,colb2)
+	 for i=1,player.count do
+	  spr(3,126-i*5,cam.y-1)
+	 end
+	else
+	 unknown_color_error()
+	end
 end
 -->8
 player_max_path_col=4
