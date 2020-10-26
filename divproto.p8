@@ -536,10 +536,7 @@ function attacks_for_tile(tile_x,tile_y)
   x=tile_x+attack_dirs[i][1]
   y=tile_y+attack_dirs[i][2]
   if is_valid_move(x,y,shoot_col) then
-   mob = mobs.by_coord[x][y]
-   if (not mob) or mob.col != shoot_col then
-	   ret[i]={x,y,shoot_col,i}
-	  end
+   ret[i]={x,y,shoot_col,i}
   end
  end
  
@@ -707,6 +704,53 @@ function get_path_moves(entity,obstacles,max_path)
  return moves
 end
 
+function get_captured(x,y)
+ local mob=mobs.by_coord[x][y]
+ if not mob then
+  return {}
+ end
+  
+ local captures={}
+ local seen={}
+ local captured=true
+ local col=mob.col
+ local function helper(x,y)
+  if not seen[x] then
+   seen[x]={}
+  end
+  if seen[x][y] then
+   return false
+  end
+  seen[x][y]=true
+  
+  if not is_valid_move(x,y,col) then
+   return false
+  end
+  
+  local mob=mobs.by_coord[x][y]
+  if not mob then
+   if player.x==x and player.y==y and player.col!=col then
+    return false
+   else
+    return true
+   end
+  end
+  
+  if mob.col != col then
+   return false
+  end
+  
+  add(captures,mob)
+  
+  return helper(x-1,y) or helper(x,y-1) or helper(x+1,y) or helper(x,y+1)
+ end
+ 
+ if helper(x,y) then
+  return {}
+ else
+  return captures
+ end
+end
 -->8
 //thanks! https://www.lexaloffle.com/bbs/?tid=2477
 function sort(a,cmp)
@@ -989,6 +1033,28 @@ mobs = {
     mob.move_to(sortables[1].move)
    end
   end)
+  
+  add(anims.after_all,function()
+	  local i=1
+	  local captures
+	  while(i <= #all_visible) do
+	   mob=all_visible[i]
+	   captures=get_captured(mob.x,mob.y)
+	   if #captures > 0 then
+	    for j=1,#captures do
+	     mob=captures[j]
+	     del(all_visible,mob)
+	     del(mobs.all,mob)
+	     mobs.by_coord[mob.x][mob.y]=false
+	     tiles.by_coord[mob.x][mob.y].col=mob.col
+	     tiles.by_coord[mob.x][mob.y].count+=mob.count
+	    end
+	    sfx(4)
+	   else
+	    i+=1
+	   end
+	  end
+	 end)
  end,
  draw=function()
   local mobspr
@@ -1006,7 +1072,7 @@ mobs = {
     mobspr=7
    elseif mob.count==3 then
     mobspr=8
-   elseif mob.count==4 then
+   elseif mob.count>=4 then
     mobspr=9
    end
    spr(mobspr,mob.x*8,mob.y*8)
@@ -1035,6 +1101,15 @@ function spawn_mob(x,y,col,cnt,skip_tween)
  end
  mob.cancel_out=function(target)
   make_tween2(mob,"x","y",target.x,target.y,mob_spd).after=function()
+   if mob.col == target.col then
+				target.count+=mob.count
+   
+    del(mobs.all,mob)
+    mobs.by_coord[mob.x][mob.y]=false
+    mobs.by_coord[target.x][target.y]=target
+    return
+   end
+   
    mob_count=mob.count-target.count
    target_count=target.count-mob.count
    mob.count=mob_count
@@ -1064,7 +1139,7 @@ function spawn_mob(x,y,col,cnt,skip_tween)
    mobs.by_coord[x][y]=mob
    make_tween2(mob,"x","y",x,y,mob_spd)
    return mob
-  elseif mobs.by_coord[x][y].col != mob.col then
+  else
    add(mobs.all,mob)
    mob.cancel_out(mobs.by_coord[x][y])
    mobs.by_coord[x][y]=mob
