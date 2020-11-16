@@ -561,7 +561,7 @@
 
 		const params = new URLSearchParams(window.location.search)
 		if (params.has("blob")) {
-			e.src = "http://cdn.jsdelivr.net/gh/jcwilk/dv_prototype@"+params.get("blob")+"/index.js";
+			e.src = window.location.protocol+"//cdn.jsdelivr.net/gh/jcwilk/dv_prototype@"+params.get("blob")+"/index.js";
 		} else {
 			e.src = "index.js?b="+Math.random(); // force the local js to always reload, it's small
 		}
